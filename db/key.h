@@ -5,44 +5,37 @@
 #include <string>
 #include <array>
 #include <algorithm>
+#include <boost/multiprecision/cpp_int.hpp>
+
+using namespace boost::multiprecision;
 
 namespace keyvadb {
-template <size_t BYTES>
-class Key {
-  std::array<uint32_t, BYTES / 4> n;
+template <uint32_t BITS>
+using Key =
+    number<cpp_int_backend<BITS, BITS, unsigned_magnitude, checked, void>>;
 
- public:
-  Key() { std::fill(n, 0); }
-
-  Key(const std::string& s) {
-    if (s.length() != BYTES * 2) {
-      throw std::invalid_argument("received wrong length");
-    }
-    size_t pos = 0;
-    for (uint32_t& v : n) {
-      v = std::strtoul(s.c_str() + pos, nullptr, 16);
-      pos += 8;
-    }
-  }
-
-  Key& operator=(const Key& b) {
-    std::copy(b.n.begin(), b.n.end(), n);
-    return *this;
-  }
-
-  Key(const Key& b) { std::copy(b.n.begin(), b.n.end(), n.begin()); }
-
-  bool Empty() {
-    for (uint32_t& v : n)
-      if (v != 0) return false;
-    return true;
-  }
-
-  bool operator<(const Key& b) { return n < b.n; }
-  bool operator>(const Key& b) { return n > b.n; }
-  bool operator<=(const Key& b) { return n <= b.n; }
-  bool operator>=(const Key& b) { return n >= b.n; }
-  bool operator==(const Key& b) { return n == b.n; }
-  bool operator!=(const Key& b) { return n != b.n; }
+template <uint32_t BITS>
+extern void FromHex(Key<BITS>& key, std::string& s) {
+  key = Key<BITS>("0x" + s);
 };
+
+template <uint32_t BITS>
+extern std::string ToHex(Key<BITS> const& key) {
+  std::stringstream s;
+  s << std::setw(BITS / 4) << std::setfill('0') << std::setbase(16) << key;
+  return s.str();
+};
+
+template <uint32_t BITS>
+extern Key<BITS> Distance(Key<BITS> const& a, Key<BITS> const& b) {
+  if (a > b) return a - b;
+  return b - a;
+};
+
+template <uint32_t BITS>
+extern Key<BITS> Stride(Key<BITS> const& start, Key<BITS> const& end,
+                        uint64_t n) {
+  return (end - start) / n;
+};
+
 }  // namespace keyvadb

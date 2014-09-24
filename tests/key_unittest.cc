@@ -3,42 +3,50 @@
 
 using namespace keyvadb;
 
-const char* h0 =
-    "0000000000000000000000000000000000000000000000000000000000000000";
-const char* h1 =
-    "0000000000000000000000000000000000000000000000000000000000000001";
-const char* h2 =
-    "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
-const char* h3 =
-    "8888888899999999AAAAAAAABBBBBBBBCCCCCCCCDDDDDDDDEEEEEEEEFFFFFFFF";
+std::string h0(
+    "0000000000000000000000000000000000000000000000000000000000000000");
+std::string h1(
+    "0000000000000000000000000000000000000000000000000000000000000001");
+std::string h2(
+    "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+std::string h3(
+    "1111111111111111111111111111111111111111111111111111111111111111");
+std::string h4(
+    "2222222222222222222222222222222222222222222222222222222222222222");
+std::string h6(
+    "3333333333333333333333333333333333333333333333333333333333333333");
+std::string h7(
+    "0000000000000000000000000000000000000000000000000000000000000002");
+std::string h8(
+    "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
 
-TEST(KeyTest, General) {
-  // Bad string constructor
-  ASSERT_THROW(Key<32> bad("BADDBADD"), std::exception);
-  ASSERT_NO_THROW(Key<4> bad("BADDBADD"));
-  // Constructor
-  Key<32> zero(h0);
-  ASSERT_TRUE(zero.Empty());
-  Key<32> first(h1);
-  ASSERT_FALSE(first.Empty());
-  Key<32> last(h2);
-  ASSERT_FALSE(last.Empty());
-  Key<32> various(h3);
-  ASSERT_FALSE(various.Empty());
-  // Copy constructor
-  Key<32> dupe(various);
-  ASSERT_FALSE(dupe.Empty());
-  ASSERT_TRUE(various == dupe);
-  ASSERT_FALSE(zero == dupe);
-  // Assignment constructor
-  Key<32> dupe2 = various;
-  ASSERT_FALSE(dupe2.Empty());
-  ASSERT_TRUE(various == dupe2);
-  ASSERT_FALSE(zero == dupe2);
-  // Comparison
+TEST(KeyTests, General) {
+  // Constructors and strings
+  Key<256> zero, first, last, ones, twos, threes, two, tooBig;
+  FromHex(zero, h0);
+  FromHex(first, h1);
+  FromHex(last, h2);
+  FromHex(ones, h3);
+  FromHex(twos, h4);
+  FromHex(threes, h6);
+  FromHex(two, h7);
+  ASSERT_EQ(h0, ToHex(zero));
+  ASSERT_EQ(h1, ToHex(first));
+  ASSERT_EQ(h2, ToHex(last));
+  // Comparisons
+  ASSERT_TRUE(zero.is_zero());
   ASSERT_TRUE(first < last);
-  ASSERT_TRUE(first <= last);
+  ASSERT_TRUE(last > first);
   ASSERT_TRUE(first != last);
-  ASSERT_FALSE(first > last);
-  ASSERT_FALSE(first >= last);
+  // Adddition
+  ASSERT_EQ(threes, ones + twos);
+  // Exceptions
+  ASSERT_THROW(last + first, std::overflow_error);
+  ASSERT_THROW(first - last, std::range_error);
+  ASSERT_THROW(FromHex(tooBig, h8), std::overflow_error);
+  // Distances
+  ASSERT_EQ(ones, Distance(threes, twos));
+  ASSERT_EQ(ones, Distance(twos, threes));
+  // Strides
+  ASSERT_EQ(ones, Stride(zero, last, 15));
 }
