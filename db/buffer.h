@@ -10,7 +10,7 @@
 namespace keyvadb {
 
 // Buffer is thread-safe
-template <uint32_t BITS, uint32_t DEGREE>
+template <uint32_t BITS>
 class Buffer {
   typedef Key<BITS> key_t;
 
@@ -30,10 +30,14 @@ class Buffer {
     return map_.erase(key.key) > 0;
   }
 
-  bool Swap(KeyValue<BITS> const& a, KeyValue<BITS> const& b) {
+  // Buffer must contain a and must not contain b.
+  // a must not equal b
+  void Swap(KeyValue<BITS> const& a, KeyValue<BITS> const& b) {
+    if (a.key == b.key) throw std::domain_error("a==b");
     std::lock_guard<std::mutex> lock(lock_);
-    map_.emplace(b.key, b.value);
-    return map_.erase(a.key) > 0;
+    if (map_.erase(a.key) == 0) throw std::domain_error("a does not exist");
+    if (!map_.emplace(b.key, b.value).second)
+      throw std::domain_error("b exists");
   }
 
   size_t Size() {

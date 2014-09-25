@@ -3,4 +3,4 @@
 
 using namespace keyvadb;
 
-TEST(TreeTests, General) {}
+TEST(TreeTests, General) { auto tree = Tree<256, 84>(); }
