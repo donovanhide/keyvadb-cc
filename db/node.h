@@ -75,6 +75,8 @@ class Node {
   constexpr size_t ChildCount() { return children_.size(); }
 
   friend std::ostream& operator<<(std::ostream& stream, const Node& node) {
+    auto stride = ToHex(Stride(node.first_, node.last_, node.ChildCount()));
+    auto distance = ToHex(Distance(node.first_, node.last_));
     stream << "Id:\t\t" << node.id_ << std::endl;
     stream << "Keys:\t\t" << node.KeyCount() - node.EmptyKeyCount()
            << std::endl;
@@ -82,9 +84,8 @@ class Node {
            << std::endl;
     stream << "First:\t\t" << ToHex(node.first_) << std::endl;
     stream << "Last:\t\t" << ToHex(node.last_) << std::endl;
-    stream << "Stride:\t\t"
-           << Stride(node.first_, node.last_, node.ChildCount()) << std::endl;
-    stream << "Distance:\t" << Distance(node.first_, node.last_) << std::endl;
+    stream << "Stride:\t\t" << stride << std::endl;
+    stream << "Distance:\t" << distance << std::endl;
     stream << "--------" << std::endl;
     for (size_t i = 0; i < node.KeyCount(); i++) {
       stream << std::setfill('0') << std::setw(3) << i << " ";
