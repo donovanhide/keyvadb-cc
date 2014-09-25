@@ -12,7 +12,9 @@ TEST(NodeTests, General) {
   ASSERT_THROW((Node<256, 84>(last, first)), std::domain_error);
   Node<256, 84> node(first, last);
   ASSERT_EQ(84, node.ChildCount());
+  ASSERT_EQ(84, node.EmptyChildCount());
   ASSERT_EQ(83, node.KeyCount());
+  ASSERT_EQ(83, node.EmptyKeyCount());
   node.AddSyntheticKeys();
   ASSERT_TRUE(node.IsSane());
 }

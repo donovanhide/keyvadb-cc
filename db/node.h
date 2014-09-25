@@ -8,7 +8,8 @@
 
 namespace keyvadb {
 
-const uint64_t SyntheticKey = std::numeric_limits<uint64_t>::max();
+static const uint64_t SyntheticChild = std::numeric_limits<uint64_t>::max();
+static const uint64_t EmptyChild = 0;
 
 template <uint32_t BITS>
 struct KeyValue {
@@ -39,13 +40,14 @@ class Node {
   Node(Key<BITS> const& first, Key<BITS> const& last)
       : first_(first), last_(last) {
     if (first >= last) throw std::domain_error("first must be lower than last");
+    std::fill(children_.begin(), children_.end(), EmptyChild);
   }
 
   void AddSyntheticKeys() {
     auto stride = Stride(first_, last_, DEGREE);
     auto cursor = first_ + stride;
     for (auto& key : keys_) {
-      key = KeyValue<BITS>{cursor, SyntheticKey};
+      key = KeyValue<BITS>{cursor, SyntheticChild};
       cursor += stride;
     }
   }
@@ -60,12 +62,11 @@ class Node {
   }
 
   size_t EmptyKeyCount() {
-    return std::count_if(keys_.begin(), keys_.end(),
+    return std::count_if(keys_.cbegin(), keys_.cend(),
                          [](KeyValue<BITS> const& k) { return k.IsZero(); });
   }
   size_t EmptyChildCount() {
-    return std::count_if(children_.begin(), children_.end(),
-                         [](uint64_t const c) { return c == 0; });
+    return std::count(children_.cbegin(), children_.cend(), EmptyChild);
   }
   size_t KeyCount() { return keys_.size(); }
   size_t ChildCount() { return children_.size(); }
