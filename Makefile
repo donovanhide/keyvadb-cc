@@ -23,11 +23,17 @@ gtest-all.o : $(GTEST_H) $(GTEST_ALL_C)
 gtest_main.o : $(GTEST_H) $(GTEST_MAIN_CC)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $(GTEST_MAIN_CC)
 
-key_unittest.o : $(TEST_DIR)/key_unittest.cc db/key.h $(GTEST_H)
+key_unittest.o : $(TEST_DIR)/key_unittest.cc db/*.h $(GTEST_H)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $(TEST_DIR)/key_unittest.cc
 
-tree_unittest.o : $(TEST_DIR)/tree_unittest.cc db/key.h db/tree.h $(GTEST_H)
+buffer_unittest.o : $(TEST_DIR)/buffer_unittest.cc db/*.h $(GTEST_H)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $(TEST_DIR)/buffer_unittest.cc
+
+node_unittest.o : $(TEST_DIR)/node_unittest.cc db/*.h  $(GTEST_H)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $(TEST_DIR)/node_unittest.cc
+
+tree_unittest.o : $(TEST_DIR)/tree_unittest.cc db/*.h $(GTEST_H)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $(TEST_DIR)/tree_unittest.cc
 
-keyvadb_tests : key_unittest.o tree_unittest.o gtest-all.o gtest_main.o
+keyvadb_tests : key_unittest.o  buffer_unittest.o node_unittest.o tree_unittest.o gtest-all.o gtest_main.o
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@

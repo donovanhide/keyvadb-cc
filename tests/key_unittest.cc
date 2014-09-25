@@ -1,24 +1,8 @@
 #include "gtest/gtest.h"
+#include "common.h"
 #include "db/key.h"
 
 using namespace keyvadb;
-
-std::string h0(
-    "0000000000000000000000000000000000000000000000000000000000000000");
-std::string h1(
-    "0000000000000000000000000000000000000000000000000000000000000001");
-std::string h2(
-    "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
-std::string h3(
-    "1111111111111111111111111111111111111111111111111111111111111111");
-std::string h4(
-    "2222222222222222222222222222222222222222222222222222222222222222");
-std::string h6(
-    "3333333333333333333333333333333333333333333333333333333333333333");
-std::string h7(
-    "0000000000000000000000000000000000000000000000000000000000000002");
-std::string h8(
-    "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
 
 TEST(KeyTests, General) {
   // Constructors and strings
@@ -48,5 +32,18 @@ TEST(KeyTests, General) {
   ASSERT_EQ(ones, Distance(threes, twos));
   ASSERT_EQ(ones, Distance(twos, threes));
   // Strides
-  ASSERT_EQ(ones, Stride(zero, last, 15));
+  auto stride = Stride(zero, last, 15);
+  ASSERT_EQ(ones, stride);
+  // Nearest
+  uint32_t nearest;
+  Key<256> distance;
+  NearestStride(zero, stride, ones, distance, nearest);
+  ASSERT_EQ(zero, distance);
+  ASSERT_EQ(1, nearest);
+  NearestStride(zero, stride, twos, distance, nearest);
+  ASSERT_EQ(zero, distance);
+  ASSERT_EQ(2, nearest);
+  NearestStride(zero, stride, two, distance, nearest);
+  ASSERT_EQ(two, distance);
+  ASSERT_EQ(0, nearest);
 }

@@ -1,9 +1,12 @@
 #pragma once
 
 #include <stdint.h>
+#include <vector>
 #include <boost/multiprecision/cpp_int.hpp>
+#include <boost/multiprecision/random.hpp>
 
 using namespace boost::multiprecision;
+using namespace boost::random;
 
 namespace keyvadb {
 template <uint32_t BITS>
@@ -17,9 +20,9 @@ extern void FromHex(Key<BITS>& key, std::string& s) {
 
 template <uint32_t BITS>
 extern std::string ToHex(Key<BITS> const& key) {
-  std::stringstream s;
-  s << std::setw(BITS / 4) << std::setfill('0') << std::setbase(16) << key;
-  return s.str();
+  std::stringstream ss;
+  ss << std::setw(BITS / 4) << std::setfill('0') << std::setbase(16) << key;
+  return ss.str();
 };
 
 template <uint32_t BITS>
@@ -30,8 +33,28 @@ extern Key<BITS> Distance(Key<BITS> const& a, Key<BITS> const& b) {
 
 template <uint32_t BITS>
 extern Key<BITS> Stride(Key<BITS> const& start, Key<BITS> const& end,
-                        uint64_t n) {
+                        uint32_t const& n) {
   return (end - start) / n;
+};
+
+template <uint32_t BITS>
+extern void NearestStride(Key<BITS> const& start, Key<BITS> const& stride,
+                          Key<BITS> const& value, Key<BITS>& distance,
+                          uint32_t& nearest) {
+  Key<BITS> index;
+  divide_qr(value - start, stride, index, distance);
+  nearest = static_cast<uint32_t>(index);
+}
+
+template <uint32_t BITS>
+using KeyGenerator = independent_bits_engine<mt19937, BITS, Key<BITS>>;
+
+template <uint32_t BITS>
+extern std::vector<Key<BITS>> RandomKeys(uint64_t n) {
+  KeyGenerator<BITS> gen;
+  std::vector<Key<BITS>> v;
+  for (uint64_t i = 0; i < n; i++) v.emplace_back(gen());
+  return v;
 };
 
 }  // namespace keyvadb

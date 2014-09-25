@@ -6,3 +6,5 @@ keyvadb.sublime-project
 keyvadb.sublime-workspace
 
 key_unittest
+
+keyvadb_tests
