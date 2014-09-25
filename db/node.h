@@ -31,15 +31,18 @@ struct KeyValue {
 template <uint32_t BITS, uint32_t DEGREE>
 class Node {
  private:
+  uint64_t id_;
   Key<BITS> first_;
   Key<BITS> last_;
   std::array<KeyValue<BITS>, DEGREE - 1> keys_;
   std::array<uint64_t, DEGREE> children_;
 
  public:
-  Node(Key<BITS> const& first, Key<BITS> const& last)
-      : first_(first), last_(last) {
+  Node(uint64_t id, Key<BITS> const& first, Key<BITS> const& last)
+      : id_(id), first_(first), last_(last) {
     if (first >= last) throw std::domain_error("first must be lower than last");
+    // auto zero = KeyValue<BITS>();
+    // std::fill(keys_.begin(), keys_.end(), zero);
     std::fill(children_.begin(), children_.end(), EmptyChild);
   }
 
@@ -52,7 +55,7 @@ class Node {
     }
   }
 
-  bool IsSane() {
+  constexpr bool IsSane() {
     if (first_ >= last_) return false;
     if (!std::is_sorted(keys_.cbegin(), keys_.cend())) return false;
     for (size_t i = 1; i < DEGREE - 1; i++)
@@ -61,15 +64,36 @@ class Node {
     return true;
   }
 
-  size_t EmptyKeyCount() {
+  constexpr size_t EmptyKeyCount() {
     return std::count_if(keys_.cbegin(), keys_.cend(),
                          [](KeyValue<BITS> const& k) { return k.IsZero(); });
   }
-  size_t EmptyChildCount() {
+  constexpr size_t EmptyChildCount() {
     return std::count(children_.cbegin(), children_.cend(), EmptyChild);
   }
-  size_t KeyCount() { return keys_.size(); }
-  size_t ChildCount() { return children_.size(); }
+  constexpr size_t KeyCount() { return keys_.size(); }
+  constexpr size_t ChildCount() { return children_.size(); }
+
+  friend std::ostream& operator<<(std::ostream& stream, const Node& node) {
+    stream << "Id:\t\t" << node.id_ << std::endl;
+    stream << "Keys:\t\t" << node.KeyCount() - node.EmptyKeyCount()
+           << std::endl;
+    stream << "Children:\t" << node.ChildCount() - node.EmptyChildCount()
+           << std::endl;
+    stream << "First:\t\t" << ToHex(node.first_) << std::endl;
+    stream << "Last:\t\t" << ToHex(node.last_) << std::endl;
+    stream << "Stride:\t\t"
+           << Stride(node.first_, node.last_, node.ChildCount()) << std::endl;
+    stream << "Distance:\t" << Distance(node.first_, node.last_) << std::endl;
+    stream << "--------" << std::endl;
+    for (size_t i = 0; i < node.KeyCount(); i++) {
+      stream << std::setfill('0') << std::setw(3) << i << " ";
+      stream << ToHex(node.keys_[i].key) << " ";
+      stream << node.keys_[i].value << " " << node.children_[i];
+      if (i == node.KeyCount() - 1) stream << " " << node.children_[i + 1];
+      stream << std::endl;
+    }
+  }
 };
 
 }  // namespace keyvadb
