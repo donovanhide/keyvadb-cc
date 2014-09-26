@@ -33,7 +33,6 @@ TEST(NodeTests, Small) {
   ASSERT_TRUE(node.IsSane());
   ASSERT_EQ(middle, node.GetKeyValue(7).key);
   ASSERT_EQ(SyntheticValue, node.GetKeyValue(7).value);
-  std::cout << node;
 }
 
 TEST(NodeTests, CopyAssign) {

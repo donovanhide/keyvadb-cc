@@ -8,3 +8,5 @@ keyvadb.sublime-workspace
 key_unittest
 
 keyvadb_tests
+
+keyvadb_unittests

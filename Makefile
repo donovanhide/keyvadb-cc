@@ -23,7 +23,7 @@ gtest-all.o : $(GTEST_H) $(GTEST_ALL_C)
 gtest_main.o : $(GTEST_H) $(GTEST_MAIN_CC)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $(GTEST_MAIN_CC)
 
-unittests.o : $(TEST_DIR)/unittests.cc db/*.h $(GTEST_H)
+unittests.o : $(TEST_DIR)/unittests.cc db/*.h tests/*.h $(GTEST_H)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $(TEST_DIR)/unittests.cc
 
 keyvadb_unittests : unittests.o gtest-all.o gtest_main.o
