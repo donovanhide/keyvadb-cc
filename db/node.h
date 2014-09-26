@@ -27,7 +27,7 @@ struct KeyValue {
 // 1. keys must always be in sorted order,lowest to highest
 // 2. each key is unique, not including zero
 // 3. first_ must be lower than last_
-// 4. No children must exist unless all keys are populated.
+// 4. no children must exist unless all keys are populated
 template <uint32_t BITS, uint32_t DEGREE>
 class Node {
  private:
@@ -41,8 +41,8 @@ class Node {
   Node(uint64_t id, Key<BITS> const& first, Key<BITS> const& last)
       : id_(id), first_(first), last_(last) {
     if (first >= last) throw std::domain_error("first must be lower than last");
-    // auto zero = KeyValue<BITS>();
-    // std::fill(keys_.begin(), keys_.end(), zero);
+    static auto zero = KeyValue<BITS>{0, 0};
+    std::fill(keys_.begin(), keys_.end(), zero);
     std::fill(children_.begin(), children_.end(), EmptyChild);
   }
 
@@ -94,6 +94,7 @@ class Node {
       if (i == node.KeyCount() - 1) stream << " " << node.children_[i + 1];
       stream << std::endl;
     }
+    stream << "--------" << std::endl;
   }
 };
 
