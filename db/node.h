@@ -25,6 +25,9 @@ struct KeyValue {
   constexpr bool operator==(KeyValue<BITS> const& rhs) {
     return key == rhs.key;
   }
+  constexpr bool operator!=(KeyValue<BITS> const& rhs) {
+    return key != rhs.key;
+  }
 };
 
 // Node invariants:

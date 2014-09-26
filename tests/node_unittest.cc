@@ -4,7 +4,7 @@
 
 using namespace keyvadb;
 
-TEST(NodeTests, BigNode) {
+TEST(NodeTests, Big) {
   Key<256> first;
   Key<256> last;
   FromHex(first, h0);
@@ -20,18 +20,36 @@ TEST(NodeTests, BigNode) {
   ASSERT_TRUE(node.IsSane());
 }
 
-TEST(NodeTests, SmallNode) {
+TEST(NodeTests, Small) {
   Key<256> first;
   Key<256> last;
+  Key<256> middle;
   FromHex(first, h0);
   FromHex(last, h2);
+  FromHex(middle, h9);
   Node<256, 16> node(0, first, last);
   ASSERT_TRUE(node.IsSane());
   node.AddSyntheticKeyValues();
   ASSERT_TRUE(node.IsSane());
-  Key<256> middle;
-  FromHex(middle, h9);
   ASSERT_EQ(middle, node.GetKeyValue(7).key);
   ASSERT_EQ(SyntheticValue, node.GetKeyValue(7).value);
   std::cout << node;
+}
+
+TEST(NodeTests, CopyAssign) {
+  Key<256> first;
+  Key<256> last;
+  Key<256> middle;
+  FromHex(first, h0);
+  FromHex(last, h2);
+  FromHex(middle, h9);
+  Node<256, 16> node(0, first, last);
+  ASSERT_TRUE(node.IsSane());
+  auto copyNode = Node<256, 16>(node);
+  ASSERT_TRUE(copyNode.IsSane());
+  node.AddSyntheticKeyValues();
+  ASSERT_NE(node.GetKeyValue(7), copyNode.GetKeyValue(7));
+  auto assignNode = copyNode;
+  assignNode.AddSyntheticKeyValues();
+  ASSERT_NE(assignNode.GetKeyValue(7), copyNode.GetKeyValue(7));
 }
