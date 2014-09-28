@@ -7,7 +7,7 @@ GTEST_MAIN_CC = $(TEST_DIR)/gtest/gtest_main.cc
 
 
 CPPFLAGS += -I$(TEST_DIR) -I.
-CXXFLAGS += -g -pthread -std=c++11
+CXXFLAGS += -g -std=c++11
 
 all : keyvadb_unittests
 

@@ -1,6 +1,7 @@
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
+#include <cstddef>
 #include <map>
 #include <vector>
 #include <mutex>
@@ -16,10 +17,10 @@ class Buffer {
 
  private:
   std::map<key_t, uint64_t> map_;
-  std::mutex lock_;
+  mutable std::mutex lock_;
 
  public:
-  size_t Add(const key_t& key, const uint64_t value) {
+  std::size_t Add(const key_t& key, const uint64_t value) {
     std::lock_guard<std::mutex> lock(lock_);
     map_.emplace(key, value);
     return map_.size();
@@ -40,7 +41,15 @@ class Buffer {
       throw std::domain_error("b exists");
   }
 
-  size_t Size() {
+  std::vector<KeyValue<BITS>> Snapshot() const {
+    std::vector<KeyValue<BITS>> snapshot;
+    std::lock_guard<std::mutex> lock(lock_);
+    for (auto const& kv : map_)
+      snapshot.emplace_back(KeyValue<BITS>{kv.first, kv.second});
+    return snapshot;
+  }
+
+  std::size_t Size() const {
     std::lock_guard<std::mutex> lock(lock_);
     return map_.size();
   }

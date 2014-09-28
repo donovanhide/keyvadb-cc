@@ -1,6 +1,7 @@
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
+#include <cstddef>
 #include <array>
 #include <algorithm>
 #include <limits>
@@ -20,13 +21,20 @@ struct KeyValue {
   Key<BITS> key;   // Hash of actual value
   uint64_t value;  // offset of actual value in values file
 
-  constexpr bool IsZero() { return key.is_zero(); }
-  constexpr bool operator<(KeyValue<BITS> const& rhs) { return key < rhs.key; }
-  constexpr bool operator==(KeyValue<BITS> const& rhs) {
+  constexpr bool IsZero() const { return key.is_zero(); }
+  constexpr bool operator<(KeyValue<BITS> const& rhs) const {
+    return key < rhs.key;
+  }
+  constexpr bool operator==(KeyValue<BITS> const& rhs) const {
     return key == rhs.key;
   }
-  constexpr bool operator!=(KeyValue<BITS> const& rhs) {
+  constexpr bool operator!=(KeyValue<BITS> const& rhs) const {
     return key != rhs.key;
+  }
+  friend std::ostream& operator<<(std::ostream& stream,
+                                  KeyValue<BITS> const& kv) {
+    stream << "Key: " << ToHex(kv.key) << " Value: " << kv.value;
+    return stream;
   }
 };
 
@@ -62,28 +70,34 @@ class Node {
     }
   }
 
-  constexpr KeyValue<BITS> GetKeyValue(size_t const i) { return keys_[i]; }
+  constexpr KeyValue<BITS> GetKeyValue(std::size_t const i) const {
+    return keys_[i];
+  }
 
-  constexpr bool IsSane() {
+  bool IsSane() const {
     if (first_ >= last_) return false;
     if (!std::is_sorted(keys_.cbegin(), keys_.cend())) return false;
-    for (size_t i = 1; i < DEGREE - 1; i++)
+    for (std::size_t i = 1; i < DEGREE - 1; i++)
       if (!keys_[i].IsZero() && keys_[i] == keys_[i - 1]) return false;
     if (EmptyKeyCount() > 0 && EmptyChildCount() != ChildCount()) return false;
     return true;
   }
 
-  constexpr size_t EmptyKeyCount() {
+  constexpr uint64_t Id() const { return id_; }
+
+  constexpr std::size_t EmptyKeyCount() const {
     return std::count_if(keys_.cbegin(), keys_.cend(),
                          [](KeyValue<BITS> const& k) { return k.IsZero(); });
   }
-  constexpr size_t EmptyChildCount() {
+  constexpr std::size_t EmptyChildCount() const {
     return std::count(children_.cbegin(), children_.cend(), EmptyChild);
   }
-  constexpr size_t KeyCount() { return keys_.size(); }
-  constexpr size_t ChildCount() { return children_.size(); }
-  constexpr Key<BITS> Distance() { return keyvadb::Distance(first_, last_); }
-  constexpr Key<BITS> Stride() {
+  constexpr std::size_t KeyCount() const { return keys_.size(); }
+  constexpr std::size_t ChildCount() const { return children_.size(); }
+  constexpr Key<BITS> Distance() const {
+    return keyvadb::Distance(first_, last_);
+  }
+  constexpr Key<BITS> Stride() const {
     return keyvadb::Stride(first_, last_, ChildCount());
   }
 
@@ -98,7 +112,7 @@ class Node {
     stream << "Stride:\t\t" << ToHex(node.Stride()) << std::endl;
     stream << "Distance:\t" << ToHex(node.Distance()) << std::endl;
     stream << "--------" << std::endl;
-    for (size_t i = 0; i < node.KeyCount(); i++) {
+    for (std::size_t i = 0; i < node.KeyCount(); i++) {
       stream << std::setfill('0') << std::setw(3) << i << " ";
       stream << ToHex(node.keys_[i].key) << " ";
       if (node.keys_[i].value == SyntheticValue) {
@@ -111,6 +125,7 @@ class Node {
       stream << std::endl;
     }
     stream << "--------" << std::endl;
+    return stream;
   }
 };
 

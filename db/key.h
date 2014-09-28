@@ -1,6 +1,7 @@
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
+#include <cstddef>
 #include <vector>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <boost/multiprecision/random.hpp>
