@@ -5,7 +5,7 @@
 using namespace keyvadb;
 
 TEST(TreeTests, General) {
-  auto tree = Tree<256, 84>();
+  auto tree = Tree<256>();
   Buffer<256> buffer;
   auto keys = RandomKeys<256>(1000);
   for (auto const& key : keys) buffer.Add(key, 0);
@@ -14,7 +14,7 @@ TEST(TreeTests, General) {
   Key<256> last;
   FromHex(first, h0);
   FromHex(last, h2);
-  Node<256, 16> node(0, first, last);
+  Node<256> node(0, 16, first, last);
   ASSERT_TRUE(node.IsSane());
   auto inserted = tree.Balance(buffer);
   ASSERT_GT(0, inserted);

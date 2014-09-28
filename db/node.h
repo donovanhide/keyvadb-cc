@@ -44,44 +44,49 @@ struct KeyValue {
 // 2. each key is unique, not including zero
 // 3. first_ must be lower than last_
 // 4. no children must exist unless all keys are populated
-template <std::uint32_t BITS, std::uint32_t DEGREE>
+template <std::uint32_t BITS>
 class Node {
  public:
   using key_type = Key<BITS>;
+  using key_value_type = KeyValue<BITS>;
 
  private:
   std::uint64_t id_;
+  std::uint32_t degree_;
   key_type first_;
   key_type last_;
-  std::array<KeyValue<BITS>, DEGREE - 1> keys_;
-  std::array<std::uint64_t, DEGREE> children_;
+  std::vector<key_value_type> keys_;
+  std::vector<std::uint64_t> children_;
 
  public:
-  Node(std::uint64_t id, key_type const& first, key_type const& last)
-      : id_(id), first_(first), last_(last) {
+  Node(std::uint64_t const id, std::uint32_t degree, key_type const& first,
+       key_type const& last)
+      : id_(id),
+        degree_(degree),
+        first_(first),
+        last_(last),
+        keys_(degree - 1),
+        children_(degree) {
     if (first >= last) throw std::domain_error("first must be lower than last");
-    static auto zero = KeyValue<BITS>{EmptyKey, EmptyValue};
-    std::fill(keys_.begin(), keys_.end(), zero);
-    std::fill(children_.begin(), children_.end(), EmptyChild);
   }
 
   void AddSyntheticKeyValues() {
     auto const stride = Stride();
     auto cursor = first_ + stride;
     for (auto& key : keys_) {
-      key = KeyValue<BITS>{cursor, SyntheticValue};
+      key = key_value_type{cursor, SyntheticValue};
       cursor += stride;
     }
   }
 
-  constexpr KeyValue<BITS> GetKeyValue(std::size_t const i) const {
+  constexpr key_value_type GetKeyValue(std::size_t const i) const {
     return keys_[i];
   }
 
   bool IsSane() const {
     if (first_ >= last_) return false;
     if (!std::is_sorted(keys_.cbegin(), keys_.cend())) return false;
-    for (std::size_t i = 1; i < DEGREE - 1; i++)
+    for (std::size_t i = 1; i < ChildCount() - 1; i++)
       if (!keys_[i].IsZero() && keys_[i] == keys_[i - 1]) return false;
     if (EmptyKeyCount() > 0 && EmptyChildCount() != ChildCount()) return false;
     return true;
@@ -93,7 +98,7 @@ class Node {
 
   constexpr std::size_t EmptyKeyCount() const {
     return std::count_if(keys_.cbegin(), keys_.cend(),
-                         [](KeyValue<BITS> const& k) { return k.IsZero(); });
+                         [](key_value_type const& k) { return k.IsZero(); });
   }
   constexpr std::size_t EmptyChildCount() const {
     return std::count(children_.cbegin(), children_.cend(), EmptyChild);
