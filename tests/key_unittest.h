@@ -17,6 +17,10 @@ TEST(KeyTests, General) {
   ASSERT_EQ(h0, ToHex(zero));
   ASSERT_EQ(h1, ToHex(first));
   ASSERT_EQ(h2, ToHex(last));
+  // Min/Max
+  ASSERT_EQ(zero, Min<256>());
+  ASSERT_EQ(first, Min<256>() + 1);
+  ASSERT_EQ(last, Max<256>());
   // Comparisons
   ASSERT_TRUE(zero.is_zero());
   ASSERT_TRUE(first < last);

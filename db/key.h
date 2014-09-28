@@ -3,8 +3,10 @@
 #include <cstdint>
 #include <cstddef>
 #include <vector>
+#include <limits>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <boost/multiprecision/random.hpp>
+#include <boost/math/tools/precision.hpp>
 
 using namespace boost::multiprecision;
 using namespace boost::random;
@@ -25,6 +27,16 @@ extern std::string ToHex(Key<BITS> const& key) {
   ss << std::setw(BITS / 4) << std::setfill('0') << std::setbase(16) << key;
   return ss.str();
 };
+
+template <std::uint32_t BITS>
+extern Key<BITS> Max() {
+  return boost::math::tools::max_value<Key<BITS>>();
+}
+
+template <std::uint32_t BITS>
+extern Key<BITS> Min() {
+  return boost::math::tools::min_value<Key<BITS>>();
+}
 
 template <std::uint32_t BITS>
 extern Key<BITS> Distance(Key<BITS> const& a, Key<BITS> const& b) {

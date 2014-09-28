@@ -36,7 +36,7 @@ class MemoryKeyStore : public KeyStore<BITS> {
   std::unordered_map<std::uint64_t, node_ptr> map_;
 
  public:
-  MemoryKeyStore(std::uint32_t const degree) : degree_(degree) {}
+  MemoryKeyStore(std::uint32_t const degree) : degree_(degree), id_(0) {}
 
   node_ptr New(const key_type& first, const key_type& last) override {
     return std::make_shared<node_type>(id_++, degree_, first, last);
