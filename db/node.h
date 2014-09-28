@@ -9,17 +9,18 @@
 
 namespace keyvadb {
 
-static const uint64_t EmptyKey = 0;
+static const std::uint64_t EmptyKey = 0;
 
-static const uint64_t SyntheticValue = std::numeric_limits<uint64_t>::max();
-static const uint64_t EmptyValue = 0;
+static const std::uint64_t SyntheticValue =
+    std::numeric_limits<std::uint64_t>::max();
+static const std::uint64_t EmptyValue = 0;
 
-static const uint64_t EmptyChild = 0;
+static const std::uint64_t EmptyChild = 0;
 
-template <uint32_t BITS>
+template <std::uint32_t BITS>
 struct KeyValue {
-  Key<BITS> key;   // Hash of actual value
-  uint64_t value;  // offset of actual value in values file
+  Key<BITS> key;        // Hash of actual value
+  std::uint64_t value;  // offset of actual value in values file
 
   constexpr bool IsZero() const { return key.is_zero(); }
   constexpr bool operator<(KeyValue<BITS> const& rhs) const {
@@ -43,17 +44,20 @@ struct KeyValue {
 // 2. each key is unique, not including zero
 // 3. first_ must be lower than last_
 // 4. no children must exist unless all keys are populated
-template <uint32_t BITS, uint32_t DEGREE>
+template <std::uint32_t BITS, std::uint32_t DEGREE>
 class Node {
+ public:
+  using key_type = Key<BITS>;
+
  private:
-  uint64_t id_;
-  Key<BITS> first_;
-  Key<BITS> last_;
+  std::uint64_t id_;
+  key_type first_;
+  key_type last_;
   std::array<KeyValue<BITS>, DEGREE - 1> keys_;
-  std::array<uint64_t, DEGREE> children_;
+  std::array<std::uint64_t, DEGREE> children_;
 
  public:
-  Node(uint64_t id, Key<BITS> const& first, Key<BITS> const& last)
+  Node(std::uint64_t id, key_type const& first, key_type const& last)
       : id_(id), first_(first), last_(last) {
     if (first >= last) throw std::domain_error("first must be lower than last");
     static auto zero = KeyValue<BITS>{EmptyKey, EmptyValue};
@@ -83,7 +87,9 @@ class Node {
     return true;
   }
 
-  constexpr uint64_t Id() const { return id_; }
+  constexpr std::uint64_t Id() const { return id_; }
+  constexpr key_type First() const { return first_; }
+  constexpr key_type Last() const { return last_; }
 
   constexpr std::size_t EmptyKeyCount() const {
     return std::count_if(keys_.cbegin(), keys_.cend(),
@@ -94,10 +100,10 @@ class Node {
   }
   constexpr std::size_t KeyCount() const { return keys_.size(); }
   constexpr std::size_t ChildCount() const { return children_.size(); }
-  constexpr Key<BITS> Distance() const {
+  constexpr key_type Distance() const {
     return keyvadb::Distance(first_, last_);
   }
-  constexpr Key<BITS> Stride() const {
+  constexpr key_type Stride() const {
     return keyvadb::Stride(first_, last_, ChildCount());
   }
 

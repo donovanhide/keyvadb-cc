@@ -11,34 +11,46 @@ namespace keyvadb {
 template <uint32_t BITS, uint32_t DEGREE>
 class KeyStore {
  public:
-  virtual std::shared_ptr<Node<BITS, DEGREE>> New(const Key<BITS>& start,
-                                                  const Key<BITS>& end) = 0;
-  virtual std::shared_ptr<Node<BITS, DEGREE>> Get(const uint64_t id) const = 0;
-  // virtual void Set(const std::shared_ptr<Node<BITS, DEGREE>> node) = 0;
+  using node_type = Node<BITS, DEGREE>;
+  using node_ptr = std::shared_ptr<node_type>;
+  using key_type = Key<BITS>;
+
+  virtual ~KeyStore() = default;
+
+  virtual node_ptr New(key_type const& start, const key_type& end) = 0;
+  virtual node_ptr Get(std::uint64_t const id) = 0;
+  virtual void Set(node_ptr const& node) = 0;
   virtual size_t Size() const = 0;
 };
 
 template <uint32_t BITS, uint32_t DEGREE>
-class MemoryKeyStore : KeyStore<BITS, DEGREE> {
+class MemoryKeyStore : public KeyStore<BITS, DEGREE> {
+ public:
+  using node_type = Node<BITS, DEGREE>;
+  using node_ptr = std::shared_ptr<node_type>;
+  using key_type = Key<BITS>;
+
  private:
   std::atomic_uint_fast64_t id_;
-  std::unordered_map<uint64_t, Node<BITS, DEGREE>> map_;
+  std::unordered_map<std::uint64_t, node_ptr> map_;
 
  public:
-  std::shared_ptr<Node<BITS, DEGREE>> New(const Key<BITS>& first,
-                                          const Key<BITS>& last) {
-    return std::make_shared<Node<BITS, DEGREE>>(id_++, first, last);
+  node_ptr New(const key_type& first, const key_type& last) override {
+    return std::make_shared<node_type>(id_++, first, last);
   }
-  std::shared_ptr<Node<BITS, DEGREE>> Get(const uint64_t id) const {
-    auto node = map_.find(id);
-    if (node != map_.end())
-      return std::make_shared<Node<BITS, DEGREE>>(node->second);
-    return std::shared_ptr<Node<BITS, DEGREE>>();
-  }
-  // void Set(const std::shared_ptr<Node<BITS, DEGREE>> node) {
-  //   map_[node->Id()] = *node;
-  // }
-  std::size_t Size() const { return id_; }
+  node_ptr Get(std::uint64_t const id) override { return map_[id]; }
+  void Set(node_ptr const& node) override { map_[node->Id()] = node; }
+  std::size_t Size() const override { return id_; }
 };
+
+template <std::uint32_t BITS, std::uint32_t DEGREE>
+std::unique_ptr<KeyStore<BITS, DEGREE>> MakeMemoryKeyStore() {
+  return std::make_unique<MemoryKeyStore<BITS, DEGREE>>();
+}
+
+// To be implemented
+template <std::uint32_t BITS, std::uint32_t DEGREE>
+std::unique_ptr<KeyStore<BITS, DEGREE>> MakeFileKeyStore(
+    std::size_t const bytesPerBlock, std::size_t const cacheBytes) {}
 
 }  // namespace keyvadb

@@ -9,6 +9,8 @@ TEST(StoreTests, Memory) {
   Key<256> last;
   FromHex(first, h0);
   FromHex(last, h2);
-  MemoryKeyStore<256, 16> mem;
-  auto node1 = mem.New(first, last);
+  auto mem = MakeMemoryKeyStore<256, 16>();
+  auto root = mem->New(first, last);
+  ASSERT_EQ(first, root->First());
+  ASSERT_EQ(last, root->Last());
 }

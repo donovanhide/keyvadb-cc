@@ -13,14 +13,14 @@ namespace keyvadb {
 // Buffer is thread-safe
 template <uint32_t BITS>
 class Buffer {
-  typedef Key<BITS> key_t;
+  typedef Key<BITS> key_type;
 
  private:
-  std::map<key_t, uint64_t> map_;
+  std::map<key_type, uint64_t> map_;
   mutable std::mutex lock_;
 
  public:
-  std::size_t Add(const key_t& key, const uint64_t value) {
+  std::size_t Add(const key_type& key, const uint64_t value) {
     std::lock_guard<std::mutex> lock(lock_);
     map_.emplace(key, value);
     return map_.size();
