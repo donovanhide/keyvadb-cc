@@ -5,6 +5,7 @@
 #include <array>
 #include <algorithm>
 #include <limits>
+#include <mutex>
 #include "key.h"
 
 namespace keyvadb {
@@ -72,14 +73,6 @@ class Node {
     if (first >= last) throw std::domain_error("first must be lower than last");
   }
 
-  Node(const Node& n)
-      : id_(n.id_),
-        degree_(n.degree_),
-        first_(n.first_),
-        last_(n.last_),
-        keys_(n.keys_),
-        children_(n.children_) {}
-
   void AddSyntheticKeyValues() {
     auto const stride = Stride();
     auto cursor = first_ + stride;
@@ -96,6 +89,7 @@ class Node {
                                   key_value_type{first_, 0});
     auto last =
         std::upper_bound(first, std::cend(values), key_value_type{last_, 0});
+
     auto count = std::distance(first, last);
     // Copy on write
     auto node = std::make_shared<Node<BITS>>(*this);
@@ -122,17 +116,21 @@ class Node {
     node->AddSyntheticKeyValues();
     auto stride = Stride();
     std::uint32_t index = 0;
-    auto previousDistance = Max<BITS>();
+    auto bestDistance = Max<BITS>();
+
     for (auto const& v : both) {
       std::uint32_t nearest;
       key_type distance;
-      NearestStride(node->first_, stride, v.key, distance, nearest);
-      if ((nearest == index && distance < previousDistance) ||
-          (nearest != index)) {
-        node->keys_[nearest] = v;
+      NearestStride(node->first_, stride, v.key, ChildCount(), distance,
+                    nearest);
+
+      if ((nearest == index && distance < bestDistance) || (nearest != index)) {
+        // std::cout << ToHex(v.key) << " " << ToHex(distance) << " " << index
+        //           << " " << nearest << " " << length << std::endl;
+        node->keys_.at(nearest) = v;
+        bestDistance = distance;
       }
       index = nearest;
-      previousDistance = distance;
     }
     return node;
   }
@@ -151,7 +149,7 @@ class Node {
   }
 
   constexpr key_value_type GetKeyValue(std::size_t const i) const {
-    return keys_[i];
+    return keys_.at(i);
   }
 
   bool IsSane() const {

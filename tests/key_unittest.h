@@ -41,13 +41,13 @@ TEST(KeyTests, General) {
   // Nearest
   uint32_t nearest;
   Key<256> distance;
-  NearestStride(zero, stride, ones, distance, nearest);
+  NearestStride(zero, stride, ones, 15, distance, nearest);
+  ASSERT_EQ(zero, distance);
+  ASSERT_EQ(0, nearest);
+  NearestStride(zero, stride, twos, 15, distance, nearest);
   ASSERT_EQ(zero, distance);
   ASSERT_EQ(1, nearest);
-  NearestStride(zero, stride, twos, distance, nearest);
-  ASSERT_EQ(zero, distance);
-  ASSERT_EQ(2, nearest);
-  NearestStride(zero, stride, two, distance, nearest);
-  ASSERT_EQ(two, distance);
+  NearestStride(zero, stride, two, 15, distance, nearest);
+  ASSERT_EQ(ones - two, distance);
   ASSERT_EQ(0, nearest);
 }

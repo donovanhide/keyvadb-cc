@@ -15,7 +15,7 @@ class Tree {
   using buffer_ptr = std::shared_ptr<Buffer<BITS>>;
   using node_ptr = std::shared_ptr<Node<BITS>>;
   using node_func = std::function<void(node_ptr, std::uint32_t)>;
-  using result_type = std::map<std::uint32_t, node_ptr>;
+  using result_type = std::multimap<std::uint32_t, node_ptr>;
   using result_ptr = std::unique_ptr<result_type>;
 
  private:
@@ -61,9 +61,16 @@ class Tree {
     if (!node) {
       throw std::domain_error("Trying to add to non-existent node");
     }
-    if (node->EmptyKeyCount() != 0) node->Add(values);
+    if (node->EmptyKeyCount() != 0) {
+      std::cout << "Before" << std::endl << *node << std::endl;
+      results->emplace(level, node->Add(values));
+      std::cout << "After" << std::endl << *std::prev(results->end(), 1)->second
+                << std::endl;
+    }
     node->EachChild([&](const key_type& first, const key_type& last,
-                        const std::uint64_t cid) {});
+                        const std::uint64_t cid) {
+
+    });
   }
 
   void walk(std::uint64_t const id, std::uint32_t const level,

@@ -17,5 +17,5 @@ TEST(TreeTests, General) {
   auto inserted = tree.Add(buffer);
   ASSERT_GT(0, inserted->size());
   ASSERT_TRUE(tree.IsSane());
-  std::cout << tree;
+  // std::cout << tree;
 }
