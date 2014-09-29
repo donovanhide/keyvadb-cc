@@ -11,13 +11,8 @@ TEST(TreeTests, General) {
   auto buffer = MakeBuffer<256>();
   buffer->FillRandom(1000);
   ASSERT_EQ(1000, buffer->Size());
-  Key<256> first;
-  Key<256> last;
-  FromHex(first, h0);
-  FromHex(last, h2);
-  Node<256> node(0, 16, first, last);
-  ASSERT_TRUE(node.IsSane());
-  auto inserted = tree.Balance(buffer);
-  std::cout << tree;
+  auto inserted = tree.Add(buffer);
   // ASSERT_GT(0, inserted);
+  ASSERT_TRUE(tree.IsSane());
+  std::cout << tree;
 }

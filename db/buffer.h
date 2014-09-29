@@ -61,8 +61,8 @@ class Buffer {
 };
 
 template <uint32_t BITS>
-std::unique_ptr<Buffer<BITS>> MakeBuffer() {
-  return std::make_unique<Buffer<BITS>>();
+std::shared_ptr<Buffer<BITS>> MakeBuffer() {
+  return std::make_shared<Buffer<BITS>>();
 }
 
 }  // namespace keyvadb
