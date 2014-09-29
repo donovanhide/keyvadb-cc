@@ -7,11 +7,10 @@ using namespace keyvadb;
 TEST(TreeTests, General) {
   auto mem = MakeMemoryKeyStore<256>(16);
   auto tree = Tree<256>(mem);
-  Buffer<256> buffer;
   ASSERT_EQ(1, mem->Size());
-  auto keys = RandomKeys<256>(1000);
-  for (auto const& key : keys) buffer.Add(key, 0);
-  ASSERT_EQ(keys.size(), buffer.Size());
+  auto buffer = MakeBuffer<256>();
+  buffer->FillRandom(1000);
+  ASSERT_EQ(1000, buffer->Size());
   Key<256> first;
   Key<256> last;
   FromHex(first, h0);

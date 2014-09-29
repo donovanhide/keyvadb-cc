@@ -12,6 +12,7 @@ class Tree {
  public:
   using key_type = Key<BITS>;
   using store_ptr = std::unique_ptr<KeyStore<BITS>>&;
+  using buffer_ptr = std::unique_ptr<Buffer<BITS>>;
   using node_ptr = std::shared_ptr<Node<BITS>>;
   using node_func = std::function<void(node_ptr, std::uint32_t)>;
 
@@ -30,8 +31,8 @@ class Tree {
 
   void Walk(node_func f) const { walk(root_, 0, f); }
 
-  std::size_t Balance(Buffer<BITS>& buffer) {
-    auto snapshot = buffer.Snapshot();
+  std::size_t Balance(buffer_ptr& buffer) {
+    auto snapshot = buffer->Snapshot();
     // for (auto const& kv : snapshot) std::cout << kv << std::endl;
     // if (node.EmptyKeyCount() == 0) return 0;
     // std::set_union(node.keys_.cbegin(), node.keys_.cend(),

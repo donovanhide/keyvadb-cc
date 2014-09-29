@@ -53,6 +53,16 @@ class Buffer {
     std::lock_guard<std::mutex> lock(lock_);
     return map_.size();
   }
+
+  void FillRandom(std::size_t n) {
+    auto keys = RandomKeys<BITS>(n);
+    for (std::size_t i = 0; i < n; i++) Add(keys[i], i);
+  }
 };
+
+template <uint32_t BITS>
+std::unique_ptr<Buffer<BITS>> MakeBuffer() {
+  return std::make_unique<Buffer<BITS>>();
+}
 
 }  // namespace keyvadb
