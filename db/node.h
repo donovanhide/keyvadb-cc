@@ -49,6 +49,8 @@ class Node {
  public:
   using key_type = Key<BITS>;
   using key_value_type = KeyValue<BITS>;
+  using child_func = std::function<
+      void(const key_type&, const key_type&, const std::uint64_t)>;
 
  private:
   std::uint64_t id_;
@@ -76,6 +78,19 @@ class Node {
     for (auto& key : keys_) {
       key = key_value_type{cursor, SyntheticValue};
       cursor += stride;
+    }
+  }
+
+  void EachChild(child_func f) {
+    auto length = ChildCount();
+    for (std::size_t i = 0; i < length; i++) {
+      if (i == 0) {
+        f(first_, keys_[i].key, children_[i]);
+      } else if (i == length) {
+        f(keys_[i].key, last_, children_[i]);
+      } else {
+        f(keys_[i].key, keys_[i + 1].key, children_[i]);
+      }
     }
   }
 

@@ -19,5 +19,6 @@ TEST(TreeTests, General) {
   Node<256> node(0, 16, first, last);
   ASSERT_TRUE(node.IsSane());
   auto inserted = tree.Balance(buffer);
+  std::cout << tree;
   // ASSERT_GT(0, inserted);
 }
