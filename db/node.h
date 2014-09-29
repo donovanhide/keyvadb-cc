@@ -72,6 +72,14 @@ class Node {
     if (first >= last) throw std::domain_error("first must be lower than last");
   }
 
+  Node(const Node& n)
+      : id_(n.id_),
+        degree_(n.degree_),
+        first_(n.first_),
+        last_(n.last_),
+        keys_(n.keys_),
+        children_(n.children_) {}
+
   void AddSyntheticKeyValues() {
     auto const stride = Stride();
     auto cursor = first_ + stride;
@@ -79,6 +87,54 @@ class Node {
       key = key_value_type{cursor, SyntheticValue};
       cursor += stride;
     }
+  }
+
+  std::shared_ptr<Node<BITS>> Add(std::vector<KeyValue<BITS>> values) {
+    auto empty = EmptyKeyCount();
+    auto length = KeyCount();
+    auto first = std::lower_bound(std::cbegin(values), std::cend(values),
+                                  key_value_type{first_, 0});
+    auto last =
+        std::upper_bound(first, std::cend(values), key_value_type{last_, 0});
+    auto count = std::distance(first, last);
+    // Copy on write
+    auto node = std::make_shared<Node<BITS>>(*this);
+    if (empty == length && count <= empty) {
+      // Node empty and won't overflow so fill from right
+      std::copy_backward(first, last, std::end(node->keys_));
+      return node;
+    }
+    if (empty + count <= length) {
+      // Node won't overflow so add left and sort
+      std::copy(first, last, std::begin(node->keys_));
+      std::sort(std::begin(node->keys_), std::end(node->keys_));
+      return node;
+    }
+    // Node will overflow so select best keys from union
+    // while overwriting synthetic key values and
+    // add remainder to values
+    std::vector<KeyValue<BITS>> both;
+    auto firstNonZero =
+        std::find_if_not(std::cbegin(node->keys_), std::cend(node->keys_),
+                         [](key_value_type const& kv) { return kv.IsZero(); });
+    std::set_union(firstNonZero, std::cend(node->keys_), first, last,
+                   std::back_inserter(both));
+    node->AddSyntheticKeyValues();
+    auto stride = Stride();
+    std::uint32_t index = 0;
+    auto previousDistance = Max<BITS>();
+    for (auto const& v : both) {
+      std::uint32_t nearest;
+      key_type distance;
+      NearestStride(node->first_, stride, v.key, distance, nearest);
+      if ((nearest == index && distance < previousDistance) ||
+          (nearest != index)) {
+        node->keys_[nearest] = v;
+      }
+      index = nearest;
+      previousDistance = distance;
+    }
+    return node;
   }
 
   void EachChild(child_func f) {

@@ -56,6 +56,8 @@ extern void NearestStride(Key<BITS> const& start, Key<BITS> const& stride,
                           std::uint32_t& nearest) {
   Key<BITS> index;
   divide_qr(value - start, stride, index, distance);
+  std::cout << ToHex(start) << " " << ToHex(stride) << " " << ToHex(value)
+            << " " << ToHex(distance) << std::endl;
   nearest = static_cast<std::uint32_t>(index);
 }
 

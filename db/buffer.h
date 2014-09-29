@@ -13,7 +13,7 @@ namespace keyvadb {
 // Buffer is thread-safe
 template <uint32_t BITS>
 class Buffer {
-  typedef Key<BITS> key_type;
+  using key_type = Key<BITS>;
 
  private:
   std::map<key_type, uint64_t> map_;
