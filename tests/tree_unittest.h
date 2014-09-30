@@ -11,12 +11,14 @@ TEST(TreeTests, General) {
   ASSERT_TRUE(tree.IsSane());
   ASSERT_EQ(1, mem->Size());
   // Insert some random values
-  auto buffer = MakeBuffer<256>();
-  std::size_t n = 10000;
-  buffer->FillRandom(n);
-  ASSERT_EQ(n, buffer->Size());
-  auto inserted = tree.Add(buffer);
-  ASSERT_GT(inserted->size(), 0);
-  ASSERT_TRUE(tree.IsSane());
+  for (std::size_t i = 0; i < 10; i++) {
+    auto buffer = MakeBuffer<256>();
+    std::size_t n = 10000;
+    buffer->FillRandom(n);
+    ASSERT_EQ(n, buffer->Size());
+    auto inserted = tree.Add(buffer);
+    ASSERT_GT(inserted->size(), 0);
+    ASSERT_TRUE(tree.IsSane());
+  }
   // std::cout << tree;
 }

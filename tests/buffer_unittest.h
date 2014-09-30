@@ -25,24 +25,24 @@ TEST(BufferTests, General) {
   FromHex(last, h2);
   FromHex(ones, h3);
   FromHex(threes, h6);
-  snapshot.Add(ones, 0);
-  snapshot.Add(ones + 1, 0);
-  snapshot.Add(ones - 1, 0);
-  snapshot.Add(ones + 2, 0);
-  snapshot.Add(ones - 2, 0);
-  snapshot.Add(threes, 0);
+  snapshot->Add(ones, 0);
+  snapshot->Add(ones + 1, 0);
+  snapshot->Add(ones - 1, 0);
+  snapshot->Add(ones + 2, 0);
+  snapshot->Add(ones - 2, 0);
+  snapshot->Add(threes, 0);
   // ContainsRange
-  ASSERT_TRUE(snapshot.ContainsRange(first, last));
-  ASSERT_FALSE(snapshot.ContainsRange(first, first));
-  ASSERT_FALSE(snapshot.ContainsRange(last, last));
-  ASSERT_TRUE(snapshot.ContainsRange(ones, threes));
-  ASSERT_FALSE(snapshot.ContainsRange(ones, ones + 1));
-  ASSERT_FALSE(snapshot.ContainsRange(ones - 1, ones));
-  ASSERT_TRUE(snapshot.ContainsRange(ones, ones + 2));
-  ASSERT_TRUE(snapshot.ContainsRange(ones - 2, ones));
+  ASSERT_TRUE(snapshot->ContainsRange(first, last));
+  ASSERT_FALSE(snapshot->ContainsRange(first, first));
+  ASSERT_FALSE(snapshot->ContainsRange(last, last));
+  ASSERT_TRUE(snapshot->ContainsRange(ones, threes));
+  ASSERT_FALSE(snapshot->ContainsRange(ones, ones + 1));
+  ASSERT_FALSE(snapshot->ContainsRange(ones - 1, ones));
+  ASSERT_TRUE(snapshot->ContainsRange(ones, ones + 2));
+  ASSERT_TRUE(snapshot->ContainsRange(ones - 2, ones));
   // std::cout << snapshot;
   // EachRange
-  snapshot.EachRange(ones, threes, [&](KeyValue<256> const& kv) {
+  snapshot->EachRange(ones, threes, [&](KeyValue<256> const& kv) {
     // std::cout << kv << std::endl;
     ASSERT_NE(ones, kv.key);
     ASSERT_NE(threes, kv.key);

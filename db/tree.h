@@ -19,6 +19,7 @@ class Tree {
   using node_func = std::function<void(node_ptr, std::uint32_t)>;
   using result_type = std::multimap<std::uint32_t, node_ptr>;
   using result_ptr = std::unique_ptr<result_type>;
+  using snapshot_ptr = std::unique_ptr<Snapshot<BITS>>;
 
  private:
   static const uint64_t rootId = 0;
@@ -44,7 +45,8 @@ class Tree {
     if (!root) {
       throw std::domain_error("Trying to get non-existent root");
     }
-    add(root, 0, buffer->Snapshot(), results);
+    auto snapshot = buffer->GetSnapshot();
+    add(root, 0, snapshot, results);
     return results;
   }
 
@@ -67,15 +69,15 @@ class Tree {
 
   // This is the only method that mutates a Node
   // Copy on write is employed
-  void add(node_ptr node, std::uint32_t level,
-           std::vector<KeyValue<BITS>> values, result_ptr& results) const {
+  void add(node_ptr node, std::uint32_t level, snapshot_ptr& snapshot,
+           result_ptr& results) const {
     bool dirty = false;
     if (node->EmptyKeyCount() != 0) {
       // Copy on write
       node = std::make_shared<Node<BITS>>(*node);
       std::cout << "Before" << std::endl << "Level:\t\t" << level << std::endl
                 << *node << std::endl;
-      node->Add(values);
+      node->Add(snapshot);
       dirty = true;
       std::cout << "After" << std::endl << "Level:\t\t" << level << std::endl
                 << *node << std::endl;
@@ -84,17 +86,7 @@ class Tree {
       node->EachChild([&](const std::size_t i, const key_type& first,
                           const key_type& last, const std::uint64_t cid) {
         std::cout << ToHex(first) << " " << ToHex(last) << std::endl;
-        auto lower = std::upper_bound(std::cbegin(values), std::cend(values),
-                                      key_value_type{first, 0});
-        auto upper =
-            std::lower_bound(lower, std::cend(values), key_value_type{last, 0});
-        if (std::distance(lower, upper) <= 1) return;
-        std::cout << std::distance(lower, upper) << " " << ToHex(lower->key)
-                  << " " << ToHex(upper->key) << std::endl;
-        lower++;
-        upper--;
-        std::cout << std::distance(lower, upper) << " " << ToHex(lower->key)
-                  << " " << ToHex(upper->key) << std::endl;
+        if (!snapshot->ContainsRange(first, last)) return;
         if (cid == EmptyChild) {
           // Copy on write
           if (!dirty) {
@@ -103,13 +95,13 @@ class Tree {
           }
           auto child = store_->New(first, last);
           node->SetChild(i, child->Id());
-          add(child, level + 1, values, results);
+          add(child, level + 1, snapshot, results);
         } else {
           auto child = store_->Get(cid);
           if (!child) {
             throw std::domain_error("Trying to get non-existent node");
           }
-          add(child, level + 1, values, results);
+          add(child, level + 1, snapshot, results);
         }
       });
     if (!node->IsSane()) {

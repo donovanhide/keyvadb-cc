@@ -84,4 +84,26 @@ extern std::vector<Key<BITS>> RandomKeys(std::uint64_t n) {
   return v;
 };
 
+template <std::uint32_t BITS>
+struct KeyValue {
+  Key<BITS> key;        // Hash of actual value
+  std::uint64_t value;  // offset of actual value in values file
+
+  constexpr bool IsZero() const { return key.is_zero(); }
+  constexpr bool operator<(KeyValue<BITS> const& rhs) const {
+    return key < rhs.key;
+  }
+  constexpr bool operator==(KeyValue<BITS> const& rhs) const {
+    return key == rhs.key;
+  }
+  constexpr bool operator!=(KeyValue<BITS> const& rhs) const {
+    return key != rhs.key;
+  }
+  friend std::ostream& operator<<(std::ostream& stream,
+                                  KeyValue<BITS> const& kv) {
+    stream << "Key: " << ToHex(kv.key) << " Value: " << kv.value;
+    return stream;
+  }
+};
+
 }  // namespace keyvadb

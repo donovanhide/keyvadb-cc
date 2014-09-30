@@ -7,6 +7,7 @@
 #include <limits>
 #include <mutex>
 #include "key.h"
+#include "snapshot.h"
 
 namespace keyvadb {
 
@@ -17,28 +18,6 @@ static const std::uint64_t SyntheticValue =
 static const std::uint64_t EmptyValue = 0;
 
 static const std::uint64_t EmptyChild = 0;
-
-template <std::uint32_t BITS>
-struct KeyValue {
-  Key<BITS> key;        // Hash of actual value
-  std::uint64_t value;  // offset of actual value in values file
-
-  constexpr bool IsZero() const { return key.is_zero(); }
-  constexpr bool operator<(KeyValue<BITS> const& rhs) const {
-    return key < rhs.key;
-  }
-  constexpr bool operator==(KeyValue<BITS> const& rhs) const {
-    return key == rhs.key;
-  }
-  constexpr bool operator!=(KeyValue<BITS> const& rhs) const {
-    return key != rhs.key;
-  }
-  friend std::ostream& operator<<(std::ostream& stream,
-                                  KeyValue<BITS> const& kv) {
-    stream << "Key: " << ToHex(kv.key) << " Value: " << kv.value;
-    return stream;
-  }
-};
 
 // Node invariants:
 // 1. keys must always be in sorted order,lowest to highest
@@ -53,6 +32,7 @@ class Node {
   using key_value_type = KeyValue<BITS>;
   using child_func = std::function<void(const std::size_t, const key_type&,
                                         const key_type&, const std::uint64_t)>;
+  using snapshot_ptr = std::unique_ptr<Snapshot<BITS>>;
 
  private:
   std::uint64_t id_;
@@ -85,52 +65,44 @@ class Node {
     }
   }
 
-  void Add(std::vector<KeyValue<BITS>> values) {
+  void Add(snapshot_ptr& snapshot) {
     auto empty = EmptyKeyCount();
     auto length = KeyCount();
-    auto first = std::upper_bound(std::cbegin(values), std::cend(values),
-                                  key_value_type{first_, 0});
-    auto last =
-        std::lower_bound(first, std::cend(values), key_value_type{last_, 0});
-    first++;
-    last--;
-    auto count = std::distance(first, last);
-
+    auto count = snapshot->CountRange(first_, last_);
     if (empty == length && count <= empty) {
       // Node empty and won't overflow so fill from right
-      std::copy_backward(first, last, std::end(keys_));
+      std::copy_backward(snapshot->Lower(first_), snapshot->Upper(last_),
+                         std::end(keys_));
       return;
     }
     if (empty + count <= length) {
       // Node won't overflow so add left and sort
-      std::cout << ToHex(first->key) << " " << ToHex(last->key) << std::endl;
-      std::copy(first, last, std::begin(keys_));
+      std::copy(snapshot->Lower(first_), snapshot->Upper(last_),
+                std::begin(keys_));
       std::sort(std::begin(keys_), std::end(keys_));
       return;
     }
     // Node will overflow so select best keys from union
     // while overwriting synthetic key values and
     // add remainder to values
-    std::vector<KeyValue<BITS>> both;
-    auto firstNonZero =
-        std::find_if_not(std::cbegin(keys_), std::cend(keys_),
-                         [](key_value_type const& kv) { return kv.IsZero(); });
-    std::set_union(firstNonZero, std::cend(keys_), first, last,
-                   std::back_inserter(both));
+    for (auto const& kv : keys_) {
+      if (!kv.IsZero()) snapshot->Add(kv.key, kv.value);
+    }
     AddSyntheticKeyValues();
     auto stride = Stride();
     std::uint32_t index = 0;
     auto bestDistance = Max<BITS>();
 
-    for (auto const& v : both) {
+    for (auto it = snapshot->Lower(first_), end = snapshot->Upper(last_);
+         it != end; ++it) {
       std::uint32_t nearest;
       key_type distance;
-      NearestStride(first_, stride, v.key, ChildCount(), distance, nearest);
+      NearestStride(first_, stride, it->key, ChildCount(), distance, nearest);
 
       if ((nearest == index && distance < bestDistance) || (nearest != index)) {
         // std::cout << ToHex(v.key) << " " << ToHex(distance) << " " << index
         //           << " " << nearest << " " << length << std::endl;
-        keys_.at(nearest) = v;
+        keys_.at(nearest) = *it;
         bestDistance = distance;
       }
       index = nearest;
