@@ -29,12 +29,12 @@ extern std::string ToHex(Key<BITS> const& key) {
 };
 
 template <std::uint32_t BITS>
-extern Key<BITS> Max() {
+extern const Key<BITS> Max() {
   return boost::math::tools::max_value<Key<BITS>>();
 }
 
 template <std::uint32_t BITS>
-extern Key<BITS> Min() {
+extern const Key<BITS> Min() {
   return boost::math::tools::min_value<Key<BITS>>();
 }
 

@@ -44,14 +44,15 @@ struct KeyValue {
 // 1. keys must always be in sorted order,lowest to highest
 // 2. each key is unique, not including zero
 // 3. first_ must be lower than last_
-// 4. no children must exist unless all keys are populated
+// 4. each non-zero key must be greater than first_ and less than last_
+// 5. no children must exist unless all keys are populated
 template <std::uint32_t BITS>
 class Node {
  public:
   using key_type = Key<BITS>;
   using key_value_type = KeyValue<BITS>;
-  using child_func = std::function<
-      void(const key_type&, const key_type&, const std::uint64_t)>;
+  using child_func = std::function<void(const std::size_t, const key_type&,
+                                        const key_type&, const std::uint64_t)>;
 
  private:
   std::uint64_t id_;
@@ -60,6 +61,7 @@ class Node {
   key_type last_;
   std::vector<key_value_type> keys_;
   std::vector<std::uint64_t> children_;
+  bool dirty_;
 
  public:
   Node(std::uint64_t const id, std::uint32_t degree, key_type const& first,
@@ -69,7 +71,8 @@ class Node {
         first_(first),
         last_(last),
         keys_(degree - 1),
-        children_(degree) {
+        children_(degree),
+        dirty_(false) {
     if (first >= last) throw std::domain_error("first must be lower than last");
   }
 
@@ -82,38 +85,39 @@ class Node {
     }
   }
 
-  std::shared_ptr<Node<BITS>> Add(std::vector<KeyValue<BITS>> values) {
+  void Add(std::vector<KeyValue<BITS>> values) {
     auto empty = EmptyKeyCount();
     auto length = KeyCount();
-    auto first = std::lower_bound(std::cbegin(values), std::cend(values),
+    auto first = std::upper_bound(std::cbegin(values), std::cend(values),
                                   key_value_type{first_, 0});
     auto last =
-        std::upper_bound(first, std::cend(values), key_value_type{last_, 0});
-
+        std::lower_bound(first, std::cend(values), key_value_type{last_, 0});
+    first++;
+    last--;
     auto count = std::distance(first, last);
-    // Copy on write
-    auto node = std::make_shared<Node<BITS>>(*this);
+
     if (empty == length && count <= empty) {
       // Node empty and won't overflow so fill from right
-      std::copy_backward(first, last, std::end(node->keys_));
-      return node;
+      std::copy_backward(first, last, std::end(keys_));
+      return;
     }
     if (empty + count <= length) {
       // Node won't overflow so add left and sort
-      std::copy(first, last, std::begin(node->keys_));
-      std::sort(std::begin(node->keys_), std::end(node->keys_));
-      return node;
+      std::cout << ToHex(first->key) << " " << ToHex(last->key) << std::endl;
+      std::copy(first, last, std::begin(keys_));
+      std::sort(std::begin(keys_), std::end(keys_));
+      return;
     }
     // Node will overflow so select best keys from union
     // while overwriting synthetic key values and
     // add remainder to values
     std::vector<KeyValue<BITS>> both;
     auto firstNonZero =
-        std::find_if_not(std::cbegin(node->keys_), std::cend(node->keys_),
+        std::find_if_not(std::cbegin(keys_), std::cend(keys_),
                          [](key_value_type const& kv) { return kv.IsZero(); });
-    std::set_union(firstNonZero, std::cend(node->keys_), first, last,
+    std::set_union(firstNonZero, std::cend(keys_), first, last,
                    std::back_inserter(both));
-    node->AddSyntheticKeyValues();
+    AddSyntheticKeyValues();
     auto stride = Stride();
     std::uint32_t index = 0;
     auto bestDistance = Max<BITS>();
@@ -121,29 +125,30 @@ class Node {
     for (auto const& v : both) {
       std::uint32_t nearest;
       key_type distance;
-      NearestStride(node->first_, stride, v.key, ChildCount(), distance,
-                    nearest);
+      NearestStride(first_, stride, v.key, ChildCount(), distance, nearest);
 
       if ((nearest == index && distance < bestDistance) || (nearest != index)) {
         // std::cout << ToHex(v.key) << " " << ToHex(distance) << " " << index
         //           << " " << nearest << " " << length << std::endl;
-        node->keys_.at(nearest) = v;
+        keys_.at(nearest) = v;
         bestDistance = distance;
       }
       index = nearest;
     }
-    return node;
   }
 
-  void EachChild(child_func f) {
+  void SetChild(std::size_t i, std::uint64_t cid) { children_[i] = cid; }
+
+  void EachChild(child_func f) const {
     auto length = ChildCount();
     for (std::size_t i = 0; i < length; i++) {
       if (i == 0) {
-        f(first_, keys_[i].key, children_[i]);
-      } else if (i == length) {
-        f(keys_[i].key, last_, children_[i]);
+        if (!keys_[i].IsZero()) f(i, first_, keys_[i].key, children_[i]);
+      } else if (i == length - 1) {
+        if (!keys_[i].IsZero()) f(i, keys_[i - 1].key, last_, children_[i]);
       } else {
-        f(keys_[i].key, keys_[i + 1].key, children_[i]);
+        if (!keys_[i - 1].IsZero() && !keys_[i].IsZero())
+          f(i, keys_[i - 1].key, keys_[i].key, children_[i]);
       }
     }
   }
@@ -155,8 +160,12 @@ class Node {
   bool IsSane() const {
     if (first_ >= last_) return false;
     if (!std::is_sorted(keys_.cbegin(), keys_.cend())) return false;
-    for (std::size_t i = 1; i < ChildCount() - 1; i++)
+    for (std::size_t i = 1; i < ChildCount() - 1; i++) {
       if (!keys_[i].IsZero() && keys_[i] == keys_[i - 1]) return false;
+      if (!keys_[i].IsZero() &&
+          (keys_[i].key <= first_ || keys_[i].key >= last_))
+        return false;
+    }
     if (EmptyKeyCount() > 0 && EmptyChildCount() != ChildCount()) return false;
     return true;
   }

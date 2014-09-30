@@ -18,20 +18,33 @@ TEST(BufferTests, General) {
     ASSERT_FALSE(buffer->Remove(kv));
   };
   ASSERT_EQ(0, buffer->Size());
-  // Swaps
-  for (size_t i = 0; i < 500; i++) ASSERT_EQ(i + 1, buffer->Add(keys.at(i), i));
-  ASSERT_EQ(500, buffer->Size());
-  for (size_t i = 0; i < 500; i++) {
-    auto existing = KeyValue<256>{keys.at(i), i};
-    auto add = KeyValue<256>{keys.at(i + 500), i + 500};
-    buffer->Swap(existing, add);
-  }
-  ASSERT_EQ(500, buffer->Size());
-  // Bad swaps
-  auto notPresent = KeyValue<256>{keys.at(0), 0};
-  auto present = KeyValue<256>{keys.at(500), 500};
-  auto alsoPresent = KeyValue<256>{keys.at(501), 501};
-  ASSERT_THROW(buffer->Swap(notPresent, present), std::domain_error);
-  ASSERT_THROW(buffer->Swap(present, alsoPresent), std::domain_error);
-  ASSERT_THROW(buffer->Swap(present, present), std::domain_error);
+  // Snapshot
+  auto snapshot = buffer->GetSnapshot();
+  Key<256> first, last, ones, threes;
+  FromHex(first, h0);
+  FromHex(last, h2);
+  FromHex(ones, h3);
+  FromHex(threes, h6);
+  snapshot.Add(ones, 0);
+  snapshot.Add(ones + 1, 0);
+  snapshot.Add(ones - 1, 0);
+  snapshot.Add(ones + 2, 0);
+  snapshot.Add(ones - 2, 0);
+  snapshot.Add(threes, 0);
+  // ContainsRange
+  ASSERT_TRUE(snapshot.ContainsRange(first, last));
+  ASSERT_FALSE(snapshot.ContainsRange(first, first));
+  ASSERT_FALSE(snapshot.ContainsRange(last, last));
+  ASSERT_TRUE(snapshot.ContainsRange(ones, threes));
+  ASSERT_FALSE(snapshot.ContainsRange(ones, ones + 1));
+  ASSERT_FALSE(snapshot.ContainsRange(ones - 1, ones));
+  ASSERT_TRUE(snapshot.ContainsRange(ones, ones + 2));
+  ASSERT_TRUE(snapshot.ContainsRange(ones - 2, ones));
+  // std::cout << snapshot;
+  // EachRange
+  snapshot.EachRange(ones, threes, [&](KeyValue<256> const& kv) {
+    // std::cout << kv << std::endl;
+    ASSERT_NE(ones, kv.key);
+    ASSERT_NE(threes, kv.key);
+  });
 }
