@@ -7,7 +7,7 @@ using namespace keyvadb;
 TEST(BufferTests, General) {
   auto buffer = MakeBuffer<256>();
   ASSERT_EQ(0, buffer->Size());
-  auto keys = RandomKeys<256>(1000);
+  auto keys = RandomKeys<256>(1000, 0);
   // Adds
   for (auto const& key : keys) buffer->Add(key, 0);
   ASSERT_EQ(keys.size(), buffer->Size());

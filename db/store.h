@@ -47,13 +47,13 @@ class MemoryKeyStore : public KeyStore<BITS> {
 };
 
 template <std::uint32_t BITS>
-std::unique_ptr<KeyStore<BITS>> MakeMemoryKeyStore(std::uint32_t const degree) {
-  return std::make_unique<MemoryKeyStore<BITS>>(degree);
+std::shared_ptr<KeyStore<BITS>> MakeMemoryKeyStore(std::uint32_t const degree) {
+  return std::make_shared<MemoryKeyStore<BITS>>(degree);
 }
 
 // To be implemented
 template <std::uint32_t BITS>
-std::unique_ptr<KeyStore<BITS>> MakeFileKeyStore(
+std::shared_ptr<KeyStore<BITS>> MakeFileKeyStore(
     std::size_t const bytesPerBlock, std::size_t const cacheBytes) {}
 
 }  // namespace keyvadb

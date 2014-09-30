@@ -45,8 +45,8 @@ class Buffer {
     return map_.size();
   }
 
-  void FillRandom(std::size_t n) {
-    auto keys = RandomKeys<BITS>(n);
+  void FillRandom(std::size_t n, std::uint32_t seed) {
+    auto keys = RandomKeys<BITS>(n, seed);
     for (std::size_t i = 0; i < n; i++) Add(keys[i], i);
   }
 };

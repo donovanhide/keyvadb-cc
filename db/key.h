@@ -77,10 +77,11 @@ template <std::uint32_t BITS>
 using KeyGenerator = independent_bits_engine<mt19937, BITS, Key<BITS>>;
 
 template <std::uint32_t BITS>
-extern std::vector<Key<BITS>> RandomKeys(std::uint64_t n) {
-  KeyGenerator<BITS> gen;
+extern std::vector<Key<BITS>> RandomKeys(std::size_t n, std::uint32_t seed) {
+  mt19937 base(seed);
+  KeyGenerator<BITS> gen(base);
   std::vector<Key<BITS>> v;
-  for (std::uint64_t i = 0; i < n; i++) v.emplace_back(gen());
+  for (std::size_t i = 0; i < n; i++) v.emplace_back(gen());
   return v;
 };
 

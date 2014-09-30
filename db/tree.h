@@ -14,7 +14,7 @@ class Tree {
  public:
   using key_type = Key<BITS>;
   using key_value_type = KeyValue<BITS>;
-  using store_ptr = std::unique_ptr<KeyStore<BITS>>&;
+  using store_ptr = std::shared_ptr<KeyStore<BITS>>;
   using buffer_ptr = std::shared_ptr<Buffer<BITS>>;
   using node_ptr = std::shared_ptr<Node<BITS>>;
   using node_func = std::function<void(node_ptr, std::uint32_t)>;
