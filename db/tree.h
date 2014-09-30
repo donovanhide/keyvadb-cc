@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include "node.h"
 #include "store.h"
+#include "journal.h"
 
 namespace keyvadb {
 
@@ -17,8 +18,7 @@ class Tree {
   using buffer_ptr = std::shared_ptr<Buffer<BITS>>;
   using node_ptr = std::shared_ptr<Node<BITS>>;
   using node_func = std::function<void(node_ptr, std::uint32_t)>;
-  using result_type = std::multimap<std::uint32_t, node_ptr>;
-  using result_ptr = std::unique_ptr<result_type>;
+  using journal_ptr = std::unique_ptr<Journal<BITS>>;
   using snapshot_ptr = std::unique_ptr<Snapshot<BITS>>;
 
  private:
@@ -39,15 +39,15 @@ class Tree {
 
   // Retuns a map of the changed nodes sorted by depth
   // The nodes are copies of the ones in the store (ie. copy on write)
-  result_ptr Add(buffer_ptr& buffer) const {
-    auto results = std::make_unique<result_type>();
+  journal_ptr Add(buffer_ptr& buffer) const {
+    auto journal = MakeJournal<BITS>();
     auto root = store_->Get(rootId);
     if (!root) {
       throw std::domain_error("Trying to get non-existent root");
     }
     auto snapshot = buffer->GetSnapshot();
-    add(root, 0, snapshot, results);
-    return results;
+    add(root, 0, snapshot, journal);
+    return journal;
   }
 
   bool IsSane() const {
@@ -70,22 +70,23 @@ class Tree {
   // This is the only method that mutates a Node
   // Copy on write is employed
   void add(node_ptr node, std::uint32_t level, snapshot_ptr& snapshot,
-           result_ptr& results) const {
+           journal_ptr& journal) const {
     bool dirty = false;
     if (node->EmptyKeyCount() != 0) {
       // Copy on write
       node = std::make_shared<Node<BITS>>(*node);
-      std::cout << "Before" << std::endl << "Level:\t\t" << level << std::endl
-                << *node << std::endl;
+      // std::cout << "Before" << std::endl << "Level:\t\t" << level <<
+      // std::endl
+      // << *node << std::endl;
       node->Add(snapshot);
       dirty = true;
-      std::cout << "After" << std::endl << "Level:\t\t" << level << std::endl
-                << *node << std::endl;
+      // std::cout << "After" << std::endl << "Level:\t\t" << level << std::endl
+      // << *node << std::endl;
     }
     if (node->EmptyKeyCount() == 0)
       node->EachChild([&](const std::size_t i, const key_type& first,
                           const key_type& last, const std::uint64_t cid) {
-        std::cout << ToHex(first) << " " << ToHex(last) << std::endl;
+        // std::cout << ToHex(first) << " " << ToHex(last) << std::endl;
         if (!snapshot->ContainsRange(first, last)) return;
         if (cid == EmptyChild) {
           // Copy on write
@@ -95,20 +96,20 @@ class Tree {
           }
           auto child = store_->New(first, last);
           node->SetChild(i, child->Id());
-          add(child, level + 1, snapshot, results);
+          add(child, level + 1, snapshot, journal);
         } else {
           auto child = store_->Get(cid);
           if (!child) {
             throw std::domain_error("Trying to get non-existent node");
           }
-          add(child, level + 1, snapshot, results);
+          add(child, level + 1, snapshot, journal);
         }
       });
     if (!node->IsSane()) {
       std::cout << *node << std::endl;
       throw std::domain_error("Insane node");
     }
-    if (dirty) results->emplace(level, node);
+    if (dirty) journal->Add(level, node);
   }
 
   void walk(std::uint64_t const id, std::uint32_t const level,

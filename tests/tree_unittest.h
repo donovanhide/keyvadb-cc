@@ -16,8 +16,9 @@ TEST(TreeTests, General) {
     std::size_t n = 10000;
     buffer->FillRandom(n);
     ASSERT_EQ(n, buffer->Size());
-    auto inserted = tree.Add(buffer);
-    ASSERT_GT(inserted->size(), 0);
+    auto journal = tree.Add(buffer);
+    ASSERT_GT(journal->Size(), 0);
+    std::cout << *journal;
     ASSERT_TRUE(tree.IsSane());
   }
   // std::cout << tree;
