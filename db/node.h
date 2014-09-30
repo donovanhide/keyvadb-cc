@@ -75,37 +75,39 @@ class Node {
                          std::end(keys_));
       return;
     }
-    if (empty + count <= length) {
-      // Node won't overflow so add left and sort
-      std::copy(snapshot->Lower(first_), snapshot->Upper(last_),
-                std::begin(keys_));
-      std::sort(std::begin(keys_), std::end(keys_));
+    // We might have duplicates so dedupe
+    std::vector<KeyValue<BITS>> unique;
+    auto firstNonZero =
+        std::find_if_not(std::cbegin(keys_), std::cend(keys_),
+                         [](key_value_type const& kv) { return kv.IsZero(); });
+    std::set_union(firstNonZero, std::cend(keys_), snapshot->Lower(first_),
+                   snapshot->Upper(last_), std::back_inserter(unique));
+    if (empty + unique.size() <= length) {
+      // Node won't overflow so overwrite with uniques from right
+      std::copy_backward(std::cbegin(unique), std::cend(unique),
+                         std::end(keys_));
       return;
     }
     // Node will overflow so select best keys from union
-    // while overwriting synthetic key values and
-    // add remainder to values
-    for (auto const& kv : keys_) {
-      if (!kv.IsZero()) snapshot->Add(kv.key, kv.value);
-    }
+    // while overwriting synthetic key values
     AddSyntheticKeyValues();
     auto stride = Stride();
     std::uint32_t index = 0;
     auto bestDistance = Max<BITS>();
-
-    for (auto it = snapshot->Lower(first_), end = snapshot->Upper(last_);
-         it != end; ++it) {
+    for (auto const& kv : unique) {
       std::uint32_t nearest;
       key_type distance;
-      NearestStride(first_, stride, it->key, ChildCount(), distance, nearest);
+      NearestStride(first_, stride, kv.key, ChildCount(), distance, nearest);
 
       if ((nearest == index && distance < bestDistance) || (nearest != index)) {
         // std::cout << ToHex(v.key) << " " << ToHex(distance) << " " << index
         //           << " " << nearest << " " << length << std::endl;
-        keys_.at(nearest) = *it;
+        keys_.at(nearest) = kv;
         bestDistance = distance;
       }
       index = nearest;
+      // Add to snapshot so keys can be pushed into a child node
+      snapshot->Add(kv.key, kv.value);
     }
   }
 
