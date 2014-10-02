@@ -11,6 +11,14 @@
 using namespace boost::multiprecision;
 using namespace boost::random;
 
+static const std::uint64_t EmptyKey = 0;
+
+static const std::uint64_t SyntheticValue =
+    std::numeric_limits<std::uint64_t>::max();
+static const std::uint64_t EmptyValue = 0;
+
+static const std::uint64_t EmptyChild = 0;
+
 namespace keyvadb {
 template <std::uint32_t BITS>
 using Key =
@@ -65,10 +73,10 @@ extern void NearestStride(Key<BITS> const& start, Key<BITS> const& stride,
     distance = stride - distance;
   }
   // Round down last
-  if (nearest == max) {
-    nearest--;
-    distance = stride - distance;
-  }
+  // if (nearest == max) {
+  //   nearest--;
+  //   distance = stride - distance;
+  // }
   // Fit to key indexes
   nearest--;
 }
@@ -91,6 +99,7 @@ struct KeyValue {
   std::uint64_t value;  // offset of actual value in values file
 
   constexpr bool IsZero() const { return key.is_zero(); }
+  constexpr bool IsSynthetic() const { return value == SyntheticValue; }
   constexpr bool operator<(KeyValue<BITS> const& rhs) const {
     return key < rhs.key;
   }

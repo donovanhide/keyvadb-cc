@@ -12,9 +12,9 @@ TEST(NodeTests, Big) {
   ASSERT_THROW((Node<256>(0, 84, last, first)), std::domain_error);
   Node<256> node(0, 84, first, last);
   ASSERT_TRUE(node.IsSane());
-  ASSERT_EQ(84, node.ChildCount());
+  ASSERT_EQ(84, node.Degree());
   ASSERT_EQ(84, node.EmptyChildCount());
-  ASSERT_EQ(83, node.KeyCount());
+  ASSERT_EQ(83, node.MaxKeys());
   ASSERT_EQ(83, node.EmptyKeyCount());
   node.AddSyntheticKeyValues();
   ASSERT_TRUE(node.IsSane());
@@ -47,8 +47,12 @@ TEST(NodeTests, CopyAssign) {
   auto copyNode = Node<256>(node);
   ASSERT_TRUE(copyNode.IsSane());
   node.AddSyntheticKeyValues();
+  node.SetChild(0, 1);
   ASSERT_NE(node.GetKeyValue(7), copyNode.GetKeyValue(7));
+  ASSERT_NE(node.GetChild(0), copyNode.GetChild(0));
   auto assignNode = copyNode;
   assignNode.AddSyntheticKeyValues();
+  node.SetChild(0, 2);
   ASSERT_NE(assignNode.GetKeyValue(7), copyNode.GetKeyValue(7));
+  ASSERT_NE(node.GetChild(0), copyNode.GetChild(0));
 }

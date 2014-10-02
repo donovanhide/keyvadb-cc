@@ -7,9 +7,12 @@ GTEST_MAIN_CC = $(TEST_DIR)/gtest/gtest_main.cc
 
 
 CPPFLAGS += -I$(TEST_DIR) -I.
-CXXFLAGS += -g3 -std=c++1y
+CXXFLAGS += -O1 -g -fno-omit-frame-pointer -std=c++1y
 
 all : keyvadb_unittests
+
+valgrind : all
+	valgrind --dsymutil=yes --track-origins=yes ./keyvadb_unittests
 
 check : all
 	./keyvadb_unittests

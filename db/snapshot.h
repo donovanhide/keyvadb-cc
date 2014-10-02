@@ -14,23 +14,28 @@ class Snapshot {
   std::set<key_value_type> set_;
 
  public:
-  void Add(const key_type& key, const uint64_t value) {
-    set_.emplace(key_value_type{key, value});
-  }
-
-  // Returns true if there are values greater than first and less than last
-  bool ContainsRange(const key_type& first, const key_type& last) const {
-    return CountRange(first, last) > 0;
-  }
-
-  size_t CountRange(const key_type& first, const key_type& last) const {
-    return std::distance(Lower(first), Upper(last));
+  // return true if KeyValue did not already exist
+  bool Add(const key_type& key, const uint64_t value) {
+    return set_.emplace(key_value_type{key, value}).second;
   }
 
   void EachRange(const key_type& first, const key_type& last,
                  snapshot_func f) const {
     for (auto begin = Lower(first), end = Upper(last); begin != end; ++begin)
       f(*begin);
+  }
+
+  constexpr std::size_t Size() { return set_.size(); }
+
+  // Returns true if there are values greater than first and less than last
+  constexpr bool ContainsRange(const key_type& first,
+                               const key_type& last) const {
+    return CountRange(first, last) > 0;
+  }
+
+  constexpr size_t CountRange(const key_type& first,
+                              const key_type& last) const {
+    return std::distance(Lower(first), Upper(last));
   }
 
   constexpr typename std::set<key_value_type>::const_iterator Lower(

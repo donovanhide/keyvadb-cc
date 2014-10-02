@@ -37,7 +37,7 @@ class Tree {
 
   void Walk(node_func f) const { walk(rootId, 0, f); }
 
-  // Retuns a map of the changed nodes sorted by depth
+  // Retuns a Journal of the changed nodes sorted by depth
   // The nodes are copies of the ones in the store (ie. copy on write)
   journal_ptr Add(buffer_ptr& buffer) const {
     auto journal = MakeJournal<BITS>();
@@ -56,6 +56,13 @@ class Tree {
     return sane;
   }
 
+  std::size_t NonSyntheticKeyCount() const {
+    std::size_t count = 0;
+    Walk([&](node_ptr n,
+             std::uint32_t level) { count += n->NonSyntheticKeyCount(); });
+    return count;
+  }
+
   friend std::ostream& operator<<(std::ostream& stream, const Tree& tree) {
     tree.Walk([&](node_ptr n, std::uint32_t level) {
       stream << "Level:\t\t" << level << std::endl << *n;
@@ -69,25 +76,30 @@ class Tree {
 
   // This is the only method that mutates a Node
   // Copy on write is employed
-  void add(node_ptr node, std::uint32_t level, snapshot_ptr& snapshot,
+  void add(node_ptr& node, std::uint32_t level, snapshot_ptr& snapshot,
            journal_ptr& journal) const {
     bool dirty = false;
+    std::int64_t added = 0;
     if (node->EmptyKeyCount() != 0) {
       // Copy on write
       node = std::make_shared<Node<BITS>>(*node);
+      dirty = true;
       // std::cout << "Before" << std::endl << "Level:\t\t" << level <<
       // std::endl
       // << *node << std::endl;
-      node->Add(snapshot);
-      dirty = true;
+      added = node->Add(snapshot);
       // std::cout << "After" << std::endl << "Level:\t\t" << level << std::endl
       // << *node << std::endl;
+    }
+    if (!node->IsSane()) {
+      std::cout << *node << std::endl;
+      throw std::domain_error("Insane node");
     }
     if (node->EmptyKeyCount() == 0)
       node->EachChild([&](const std::size_t i, const key_type& first,
                           const key_type& last, const std::uint64_t cid) {
-        // std::cout << ToHex(first) << " " << ToHex(last) << std::endl;
         if (!snapshot->ContainsRange(first, last)) return;
+
         if (cid == EmptyChild) {
           // Copy on write
           if (!dirty) {
@@ -109,7 +121,7 @@ class Tree {
       std::cout << *node << std::endl;
       throw std::domain_error("Insane node");
     }
-    if (dirty) journal->Add(level, node);
+    if (dirty) journal->Add(level, node, added);
   }
 
   void walk(std::uint64_t const id, std::uint32_t const level,
