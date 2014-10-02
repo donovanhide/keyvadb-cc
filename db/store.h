@@ -5,9 +5,13 @@
 #include <unordered_map>
 #include <atomic>
 #include "key.h"
-#include "node.h"
 
 namespace keyvadb {
+
+// Forward Declaration
+template <std::uint32_t BITS>
+class Node;
+
 template <std::uint32_t BITS>
 class KeyStore {
  public:

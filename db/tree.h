@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include "node.h"
 #include "store.h"
-#include "journal.h"
+#include "delta.h"
 
 namespace keyvadb {
 
@@ -20,6 +20,7 @@ class Tree {
   using node_func = std::function<void(node_ptr, std::uint32_t)>;
   using journal_ptr = std::unique_ptr<Journal<BITS>>;
   using snapshot_ptr = std::unique_ptr<Snapshot<BITS>>;
+  using delta_type = Delta<BITS>;
 
  private:
   static const uint64_t rootId = 0;
@@ -74,40 +75,19 @@ class Tree {
   static constexpr key_type firstRootKey() { return Min<BITS>() + 1; }
   static constexpr key_type lastRootKey() { return Max<BITS>(); }
 
-  // This is the only method that mutates a Node
-  // Copy on write is employed
   void add(node_ptr& node, std::uint32_t level, snapshot_ptr& snapshot,
            journal_ptr& journal) const {
-    bool dirty = false;
-    std::int64_t added = 0;
-    if (node->EmptyKeyCount() != 0) {
-      // Copy on write
-      node = std::make_shared<Node<BITS>>(*node);
-      dirty = true;
-      // std::cout << "Before" << std::endl << "Level:\t\t" << level <<
-      // std::endl
-      // << *node << std::endl;
-      added = node->Add(snapshot);
-      // std::cout << "After" << std::endl << "Level:\t\t" << level << std::endl
-      // << *node << std::endl;
-    }
-    if (!node->IsSane()) {
-      std::cout << *node << std::endl;
-      throw std::domain_error("Insane node");
-    }
-    if (node->EmptyKeyCount() == 0)
-      node->EachChild([&](const std::size_t i, const key_type& first,
-                          const key_type& last, const std::uint64_t cid) {
+    delta_type delta(node);
+    delta.AddKeys(snapshot);
+    delta.CheckSanity();
+    if (delta.Current()->EmptyKeyCount() == 0)
+      delta.Current()->EachChild([&](const std::size_t i, const key_type& first,
+                                     const key_type& last,
+                                     const std::uint64_t cid) {
         if (!snapshot->ContainsRange(first, last)) return;
-
         if (cid == EmptyChild) {
-          // Copy on write
-          if (!dirty) {
-            dirty = true;
-            node = std::make_shared<Node<BITS>>(*node);
-          }
           auto child = store_->New(first, last);
-          node->SetChild(i, child->Id());
+          delta.SetChild(i, child->Id());
           add(child, level + 1, snapshot, journal);
         } else {
           auto child = store_->Get(cid);
@@ -117,11 +97,8 @@ class Tree {
           add(child, level + 1, snapshot, journal);
         }
       });
-    if (!node->IsSane()) {
-      std::cout << *node << std::endl;
-      throw std::domain_error("Insane node");
-    }
-    if (dirty) journal->Add(level, node, added);
+    delta.CheckSanity();
+    if (delta.Dirty()) journal->Add(level, delta);
   }
 
   void walk(std::uint64_t const id, std::uint32_t const level,

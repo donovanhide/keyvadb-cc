@@ -8,6 +8,7 @@
 #include <mutex>
 #include "key.h"
 #include "snapshot.h"
+#include "journal.h"
 
 namespace keyvadb {
 
@@ -26,8 +27,8 @@ class Node {
   using children_type = std::vector<std::uint64_t>;
   using child_func = std::function<void(const std::size_t, const key_type&,
                                         const key_type&, const std::uint64_t)>;
-
   using snapshot_ptr = std::unique_ptr<Snapshot<BITS>>;
+  using node_ptr = std::shared_ptr<Node<BITS>>;
 
  private:
   std::uint64_t id_;
@@ -69,51 +70,6 @@ class Node {
     for (auto& key : keys_) key = key_value_type{0, EmptyValue};
   }
 
-  std::size_t Add(snapshot_ptr& snapshot) {
-    auto N = MaxKeys();
-    std::set<KeyValue<BITS>> C(NonZeroBegin(), std::cend(keys_));
-    auto existing = C.size();
-    C.insert(snapshot->Lower(first_), snapshot->Upper(last_));
-    auto combined = C.size();
-    if (existing == combined) {
-      std::cout << "Nothing: " << std::endl;
-      return 0;
-    }
-    if (combined <= N) {
-      std::copy_backward(std::cbegin(C), std::cend(C), std::end(keys_));
-      std::cout << "Add: " << C.size() << std::endl;
-      return C.size();
-    }
-    Clear();
-    auto stride = Stride();
-    std::size_t index = 0;
-    key_type best = Max<BITS>();
-    for (auto const& kv : C) {
-      std::uint32_t nearest;
-      key_type distance;
-      NearestStride(first_, stride, kv.key, N, distance, nearest);
-      if ((nearest == index && distance < best) || (nearest != index)) {
-        keys_.at(nearest) = kv;
-        best = distance;
-      }
-      index = nearest;
-    }
-    auto synthetics = AddSyntheticKeyValues();
-    std::size_t evicted = 0;
-    for (auto const& kv : keys_) {
-      if (!kv.IsSynthetic()) C.erase(kv);
-    }
-    for (auto const& kv : C) {
-      if (snapshot->Add(kv.key, kv.value)) evicted++;
-    }
-    std::cout << "Merge: N: " << N << " Synthetics: " << synthetics
-              << " Existing: " << existing << " Evicted: " << evicted
-              << " Combined: " << combined << std::endl;
-
-    return existing - evicted;
-    // return N - synthetics - existing - evicted;
-  }
-
   void SetChild(std::size_t i, std::uint64_t cid) { children_.at(i) = cid; }
   std::uint64_t GetChild(std::size_t i) { return children_.at(i); }
 
@@ -136,6 +92,9 @@ class Node {
   constexpr key_value_type GetKeyValue(std::size_t const i) const {
     return keys_.at(i);
   }
+  constexpr void SetKeyValue(std::size_t const i, key_value_type const& kv) {
+    keys_.at(i) = kv;
+  }
 
   bool IsSane() const {
     if (first_ >= last_) return false;
@@ -154,6 +113,16 @@ class Node {
   constexpr key_type First() const { return first_; }
   constexpr key_type Last() const { return last_; }
 
+  constexpr typename key_values_type::iterator Begin() {
+    return std::begin(keys_);
+  }
+  constexpr typename key_values_type::iterator End() { return std::end(keys_); }
+  constexpr typename key_values_type::const_iterator CBegin() const {
+    return std::cbegin(keys_);
+  }
+  constexpr typename key_values_type::const_iterator CEnd() const {
+    return std::cend(keys_);
+  }
   constexpr typename key_values_type::const_iterator NonZeroBegin() const {
     return std::find_if_not(
         std::cbegin(keys_), std::cend(keys_),
