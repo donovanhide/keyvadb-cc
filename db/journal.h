@@ -20,7 +20,7 @@ class Journal {
     deltas_.emplace(level, delta);
   }
 
-  void Commit(key_store_ptr store) {
+  void Commit(key_store_ptr& store) {
     // write deepest nodes first so that no parent can refer
     // to a non-existent child
     for (auto it = std::crbegin(deltas_), end = std::crend(deltas_); it != end;
@@ -28,7 +28,7 @@ class Journal {
       store->Set(it->second.Current());
   }
 
-  std::size_t Size() { return deltas_.size(); }
+  constexpr std::size_t Size() const { return deltas_.size(); }
 
   friend std::ostream& operator<<(std::ostream& stream,
                                   const Journal& journal) {

@@ -52,7 +52,7 @@ class Node {
                               " " + ToHex(last));
   }
 
-  std::size_t AddSyntheticKeyValues() {
+  constexpr std::size_t AddSyntheticKeyValues() {
     auto const stride = Stride();
     auto cursor = first_ + stride;
     std::size_t count = 0;
@@ -66,14 +66,18 @@ class Node {
     return count;
   }
 
-  void Clear() {
+  constexpr void Clear() {
     for (auto& key : keys_) key = key_value_type{0, EmptyValue};
   }
 
-  void SetChild(std::size_t i, std::uint64_t cid) { children_.at(i) = cid; }
-  std::uint64_t GetChild(std::size_t i) { return children_.at(i); }
+  constexpr void SetChild(std::size_t const i, std::uint64_t const cid) {
+    children_.at(i) = cid;
+  }
+  constexpr std::uint64_t GetChild(std::size_t const i) const {
+    return children_.at(i);
+  }
 
-  void EachChild(child_func f) const {
+  constexpr void EachChild(child_func f) const {
     auto length = Degree();
     for (std::size_t i = 0; i < length; i++) {
       if (i == 0) {
@@ -96,7 +100,7 @@ class Node {
     keys_.at(i) = kv;
   }
 
-  bool IsSane() const {
+  constexpr bool IsSane() const {
     if (first_ >= last_) return false;
     if (!std::is_sorted(keys_.cbegin(), keys_.cend())) return false;
     for (std::size_t i = 1; i < Degree() - 1; i++) {

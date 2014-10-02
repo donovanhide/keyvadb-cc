@@ -25,7 +25,7 @@ class Snapshot {
       f(*begin);
   }
 
-  constexpr std::size_t Size() { return set_.size(); }
+  constexpr std::size_t Size() const { return set_.size(); }
 
   // Returns true if there are values greater than first and less than last
   constexpr bool ContainsRange(const key_type& first,

@@ -75,7 +75,7 @@ class Tree {
   static constexpr key_type firstRootKey() { return Min<BITS>() + 1; }
   static constexpr key_type lastRootKey() { return Max<BITS>(); }
 
-  void add(node_ptr& node, std::uint32_t level, snapshot_ptr& snapshot,
+  void add(node_ptr& node, std::uint32_t const level, snapshot_ptr& snapshot,
            journal_ptr& journal) const {
     delta_type delta(node);
     delta.AddKeys(snapshot);
