@@ -29,6 +29,8 @@ class Node {
                                         const key_type&, const std::uint64_t)>;
   using snapshot_ptr = std::unique_ptr<Snapshot<BITS>>;
   using node_ptr = std::shared_ptr<Node<BITS>>;
+  using iterator = typename std::vector<KeyValue<BITS>>::iterator;
+  using const_iterator = typename std::vector<KeyValue<BITS>>::const_iterator;
 
  private:
   std::uint64_t id_;
@@ -117,17 +119,13 @@ class Node {
   constexpr key_type First() const { return first_; }
   constexpr key_type Last() const { return last_; }
 
-  constexpr typename key_values_type::iterator Begin() {
-    return std::begin(keys_);
-  }
-  constexpr typename key_values_type::iterator End() { return std::end(keys_); }
-  constexpr typename key_values_type::const_iterator CBegin() const {
-    return std::cbegin(keys_);
-  }
-  constexpr typename key_values_type::const_iterator CEnd() const {
-    return std::cend(keys_);
-  }
-  constexpr typename key_values_type::const_iterator NonZeroBegin() const {
+  // Iterators
+  constexpr iterator begin() { return std::begin(keys_); }
+  constexpr iterator end() { return std::end(keys_); }
+  constexpr const_iterator end() const { return std::cend(keys_); }
+  constexpr const_iterator cbegin() const { return std::cbegin(keys_); }
+  constexpr const_iterator cend() const { return std::cend(keys_); }
+  constexpr const_iterator NonZeroBegin() const {
     return std::find_if_not(
         std::cbegin(keys_), std::cend(keys_),
         [](key_value_type const& kv) { return kv.IsZero(); });

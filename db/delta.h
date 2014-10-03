@@ -53,7 +53,7 @@ class Delta {
     // Full node, nothing to do
     if (current_->EmptyKeyCount() == 0) return;
     auto N = current_->MaxKeys();
-    std::set<KeyValue<BITS>> C(current_->NonZeroBegin(), current_->CEnd());
+    std::set<KeyValue<BITS>> C(current_->NonZeroBegin(), current_->cend());
     auto existing = C.size();
     C.insert(snapshot->Lower(current_->First()),
              snapshot->Upper(current_->Last()));
@@ -65,7 +65,7 @@ class Delta {
     Flip();
     if (combined <= N) {
       // Won't overflow copy right
-      std::copy_backward(std::cbegin(C), std::cend(C), current_->End());
+      std::copy_backward(std::cbegin(C), std::cend(C), current_->end());
       insertions_ = C.size();
       return;
     }
@@ -84,16 +84,13 @@ class Delta {
       index = nearest;
     }
     current_->AddSyntheticKeyValues();
-    for (auto it = current_->CBegin(), end = current_->CEnd(); it != end;
-         ++it) {
-      if (!it->IsSynthetic()) {
-        C.erase(*it);
+    for (auto const& kv : *current_)
+      if (!kv.IsSynthetic()) {
+        C.erase(kv);
         insertions_++;
       }
-    }
-    for (auto const& kv : C) {
+    for (auto const& kv : C)
       if (snapshot->Add(kv.key, kv.value)) evictions_++;
-    }
     return;
   }
 
