@@ -6,7 +6,7 @@ using namespace keyvadb;
 
 TEST(BufferTests, General) {
   auto buffer = MakeBuffer<256>();
-  ASSERT_EQ(0, buffer->Size());
+  ASSERT_EQ(0UL, buffer->Size());
   auto keys = RandomKeys<256>(1000, 0);
   // Adds
   for (auto const& key : keys) buffer->Add(key, 0);
@@ -17,7 +17,7 @@ TEST(BufferTests, General) {
     ASSERT_TRUE(buffer->Remove(kv));
     ASSERT_FALSE(buffer->Remove(kv));
   };
-  ASSERT_EQ(0, buffer->Size());
+  ASSERT_EQ(0UL, buffer->Size());
   // Snapshot
   auto snapshot = buffer->GetSnapshot();
   Key<256> first, last, ones, threes;

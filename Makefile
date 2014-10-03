@@ -6,8 +6,8 @@ GTEST_ALL_C = $(TEST_DIR)/gtest/gtest-all.cc
 GTEST_MAIN_CC = $(TEST_DIR)/gtest/gtest_main.cc
 
 
-CPPFLAGS += -I$(TEST_DIR) -I.
-CXXFLAGS += -O1 -g -fno-omit-frame-pointer -std=c++1y
+CPPFLAGS += -I$(TEST_DIR) -I. -isystem $(TEST_DIR)/gtest
+CXXFLAGS += -O1 -g -Wall -Wextra -std=c++1y  -DGTEST_LANG_CXX11=1
 
 all : keyvadb_unittests
 

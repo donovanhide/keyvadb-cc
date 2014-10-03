@@ -53,14 +53,14 @@ class Tree {
 
   bool IsSane() const {
     bool sane = true;
-    Walk([&](node_ptr n, std::uint32_t level) { sane &= n->IsSane(); });
+    Walk([&](node_ptr n, std::uint32_t) { sane &= n->IsSane(); });
     return sane;
   }
 
   std::size_t NonSyntheticKeyCount() const {
     std::size_t count = 0;
-    Walk([&](node_ptr n,
-             std::uint32_t level) { count += n->NonSyntheticKeyCount(); });
+    Walk(
+        [&](node_ptr n, std::uint32_t) { count += n->NonSyntheticKeyCount(); });
     return count;
   }
 
@@ -108,8 +108,8 @@ class Tree {
       throw std::domain_error("Trying to walk non-existent node");
     }
     f(node, level);
-    node->EachChild([&](const std::size_t i, const key_type& first,
-                        const key_type& last, const std::uint64_t cid) {
+    node->EachChild([&](const std::size_t, const key_type&, const key_type&,
+                        const std::uint64_t cid) {
       if (cid != EmptyChild) walk(cid, level + 1, f);
     });
   }

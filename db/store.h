@@ -56,8 +56,8 @@ std::shared_ptr<KeyStore<BITS>> MakeMemoryKeyStore(std::uint32_t const degree) {
 }
 
 // To be implemented
-template <std::uint32_t BITS>
-std::shared_ptr<KeyStore<BITS>> MakeFileKeyStore(
-    std::size_t const bytesPerBlock, std::size_t const cacheBytes) {}
+// template <std::uint32_t BITS>
+// std::shared_ptr<KeyStore<BITS>> MakeFileKeyStore(
+//     std::size_t const bytesPerBlock, std::size_t const cacheBytes) {}
 
 }  // namespace keyvadb

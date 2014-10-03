@@ -60,8 +60,8 @@ extern Key<BITS> Stride(Key<BITS> const& start, Key<BITS> const& end,
 
 template <std::uint32_t BITS>
 extern void NearestStride(Key<BITS> const& start, Key<BITS> const& stride,
-                          Key<BITS> const& value, const std::uint32_t max,
-                          Key<BITS>& distance, std::uint32_t& nearest) {
+                          Key<BITS> const& value, Key<BITS>& distance,
+                          std::uint32_t& nearest) {
   Key<BITS> index;
   divide_qr(value - start, stride, index, distance);
   // std::cout << ToHex(start) << " " << ToHex(stride) << " " << ToHex(value)
@@ -72,12 +72,6 @@ extern void NearestStride(Key<BITS> const& start, Key<BITS> const& stride,
     nearest++;
     distance = stride - distance;
   }
-  // Round down last
-  // if (nearest == max) {
-  //   nearest--;
-  //   distance = stride - distance;
-  // }
-  // Fit to key indexes
   nearest--;
 }
 

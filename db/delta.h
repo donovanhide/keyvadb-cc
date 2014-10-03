@@ -18,7 +18,7 @@ class Delta {
 
  public:
   Delta(node_ptr& node)
-      : current_(node), insertions_(0), evictions_(0), children_(0) {}
+      : insertions_(0), evictions_(0), children_(0), current_(node) {}
 
   void Flip() {
     // Copy on write
@@ -33,7 +33,9 @@ class Delta {
     return false;
   }
   constexpr node_ptr Current() const { return current_; }
-
+  constexpr std::uint64_t TotalChanges() const {
+    return insertions_ - evictions_;
+  }
   void CheckSanity() {
     if (!current_->IsSane()) {
       std::cout << *current_ << std::endl;
@@ -74,14 +76,14 @@ class Delta {
     for (auto const& kv : C) {
       std::uint32_t nearest;
       key_type distance;
-      NearestStride(current_->First(), stride, kv.key, N, distance, nearest);
+      NearestStride(current_->First(), stride, kv.key, distance, nearest);
       if ((nearest == index && distance < best) || (nearest != index)) {
         current_->SetKeyValue(nearest, kv);
         best = distance;
       }
       index = nearest;
     }
-    auto synthetics = current_->AddSyntheticKeyValues();
+    current_->AddSyntheticKeyValues();
     for (auto it = current_->CBegin(), end = current_->CEnd(); it != end;
          ++it) {
       if (!it->IsSynthetic()) {

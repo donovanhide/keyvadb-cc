@@ -30,6 +30,12 @@ class Journal {
 
   constexpr std::size_t Size() const { return deltas_.size(); }
 
+  std::uint64_t TotalChangedKeys() const {
+    std::uint64_t total = 0;
+    for (auto const& kv : deltas_) total += kv.second.TotalChanges();
+    return total;
+  }
+
   friend std::ostream& operator<<(std::ostream& stream,
                                   const Journal& journal) {
     for (auto const& kv : journal.deltas_) {

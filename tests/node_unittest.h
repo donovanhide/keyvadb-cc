@@ -12,10 +12,10 @@ TEST(NodeTests, Big) {
   ASSERT_THROW((Node<256>(0, 84, last, first)), std::domain_error);
   Node<256> node(0, 84, first, last);
   ASSERT_TRUE(node.IsSane());
-  ASSERT_EQ(84, node.Degree());
-  ASSERT_EQ(84, node.EmptyChildCount());
-  ASSERT_EQ(83, node.MaxKeys());
-  ASSERT_EQ(83, node.EmptyKeyCount());
+  ASSERT_EQ(84UL, node.Degree());
+  ASSERT_EQ(84UL, node.EmptyChildCount());
+  ASSERT_EQ(83UL, node.MaxKeys());
+  ASSERT_EQ(83UL, node.EmptyKeyCount());
   node.AddSyntheticKeyValues();
   ASSERT_TRUE(node.IsSane());
 }
