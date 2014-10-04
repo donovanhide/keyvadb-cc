@@ -1,4 +1,5 @@
 #include "tests/common.h"
+#include "db/memory.h"
 #include "db/tree.h"
 
 using namespace keyvadb;

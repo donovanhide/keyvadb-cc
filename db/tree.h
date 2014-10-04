@@ -28,9 +28,8 @@ class Tree {
 
  public:
   explicit Tree(store_ptr const& store) : store_(store) {
-    auto root = store_->Get(rootId);
-    if (!root) {
-      root = store_->New(firstRootKey(), lastRootKey());
+    if (!store_->Has(rootId)) {
+      auto root = store_->New(firstRootKey(), lastRootKey());
       // root->AddSyntheticKeyValues();
       store_->Set(root);
     }
@@ -43,9 +42,6 @@ class Tree {
   journal_ptr Add(buffer_ptr const& buffer) const {
     auto journal = MakeJournal<BITS>();
     auto root = store_->Get(rootId);
-    if (!root) {
-      throw std::domain_error("Trying to get non-existent root");
-    }
     auto snapshot = buffer->GetSnapshot();
     add(root, 0, snapshot, journal);
     return journal;
@@ -55,9 +51,6 @@ class Tree {
 
   std::uint64_t get(std::uint64_t const id, key_type const& key) const {
     auto node = store_->Get(id);
-    if (!node) {
-      throw std::domain_error("Trying to get non-existent node");
-    }
     auto value = node->Find(key);
     if (value != EmptyValue) return value;
     node->EachChild([&](const std::size_t, const key_type& first,
@@ -108,9 +101,6 @@ class Tree {
           add(child, level + 1, snapshot, journal);
         } else {
           auto child = store_->Get(cid);
-          if (!child) {
-            throw std::domain_error("Trying to get non-existent node");
-          }
           add(child, level + 1, snapshot, journal);
         }
       });
@@ -122,9 +112,6 @@ class Tree {
   void walk(std::uint64_t const id, std::uint32_t const level,
             node_func f) const {
     auto node = store_->Get(id);
-    if (!node) {
-      throw std::domain_error("Trying to walk non-existent node");
-    }
     f(node, level);
     node->EachChild([&](const std::size_t, const key_type&, const key_type&,
                         const std::uint64_t cid) {
