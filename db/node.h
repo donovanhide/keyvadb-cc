@@ -95,6 +95,12 @@ class Node {
       }
     }
   }
+  constexpr std::uint64_t Find(key_type const& key) const {
+    auto found = std::find_if(
+        cbegin(), cend(),
+        [&key](key_value_type const& kv) { return kv.key == key; });
+    return (found != cend()) ? found->value : EmptyValue;
+  }
 
   constexpr key_value_type GetKeyValue(std::size_t const i) const {
     return keys_.at(i);

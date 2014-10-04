@@ -12,6 +12,7 @@ class Snapshot {
   using key_type = Key<BITS>;
   using key_value_type = KeyValue<BITS>;
   using snapshot_func = std::function<void(key_value_type const)>;
+  using const_iterator = typename std::set<key_value_type>::const_iterator;
 
  private:
   std::set<key_value_type> set_;
@@ -20,12 +21,6 @@ class Snapshot {
   // return true if KeyValue did not already exist
   bool Add(const key_type& key, const uint64_t value) {
     return set_.emplace(key_value_type{key, value}).second;
-  }
-
-  void EachRange(const key_type& first, const key_type& last,
-                 snapshot_func f) const {
-    for (auto begin = Lower(first), end = Upper(last); begin != end; ++begin)
-      f(*begin);
   }
 
   constexpr std::size_t Size() const { return set_.size(); }
@@ -41,15 +36,16 @@ class Snapshot {
     return std::distance(Lower(first), Upper(last));
   }
 
-  constexpr typename std::set<key_value_type>::const_iterator Lower(
-      const key_type& first) const {
+  constexpr const_iterator Lower(const key_type& first) const {
     return set_.upper_bound(key_value_type{first, 0});
   }
 
-  constexpr typename std::set<key_value_type>::const_iterator Upper(
-      const key_type& last) const {
+  constexpr const_iterator Upper(const key_type& last) const {
     return set_.lower_bound(key_value_type{last, 0});
   }
+
+  constexpr const_iterator begin() const { return std::cbegin(set_); }
+  constexpr const_iterator end() const { return std::cend(set_); }
 
   friend std::ostream& operator<<(std::ostream& stream,
                                   const Snapshot& snapshot) {

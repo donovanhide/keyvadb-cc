@@ -15,7 +15,7 @@ TEST(BufferTests, General) {
     auto kv = KeyValue<256>{key, 0};
     ASSERT_TRUE(buffer->Remove(kv));
     ASSERT_FALSE(buffer->Remove(kv));
-  };
+  }
   ASSERT_EQ(0UL, buffer->Size());
   // Snapshot
   auto snapshot = buffer->GetSnapshot();
@@ -40,10 +40,4 @@ TEST(BufferTests, General) {
   ASSERT_TRUE(snapshot->ContainsRange(ones, ones + 2));
   ASSERT_TRUE(snapshot->ContainsRange(ones - 2, ones));
   // std::cout << snapshot;
-  // EachRange
-  snapshot->EachRange(ones, threes, [&](KeyValue<256> const& kv) {
-    // std::cout << kv << std::endl;
-    ASSERT_NE(ones, kv.key);
-    ASSERT_NE(threes, kv.key);
-  });
 }

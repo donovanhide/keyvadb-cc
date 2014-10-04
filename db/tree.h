@@ -51,6 +51,23 @@ class Tree {
     return journal;
   }
 
+  std::uint64_t Get(key_type const& key) const { return get(rootId, key); }
+
+  std::uint64_t get(std::uint64_t const id, key_type const& key) const {
+    auto node = store_->Get(id);
+    if (!node) {
+      throw std::domain_error("Trying to get non-existent node");
+    }
+    auto value = node->Find(key);
+    if (value != EmptyValue) return value;
+    node->EachChild([&](const std::size_t, const key_type& first,
+                        const key_type& last, const std::uint64_t cid) {
+      if (first > key) return;
+      if (key > first && key < last) value = get(cid, key);
+    });
+    return value;
+  }
+
   bool IsSane() const {
     bool sane = true;
     Walk([&sane](node_ptr n, std::uint32_t) { sane &= n->IsSane(); });
