@@ -1,6 +1,7 @@
-#include "keyvadb/db"
+#include "db.h"
 
 int main(int argc, char** argv) {
-  keyvadb::DB db;
-  keyvadb::DB::Open("db", &db) return 0;
+  keyvadb::DB<256> db;
+  keyvadb::NewMemoryDB(&db);
+  return 0;
 }
