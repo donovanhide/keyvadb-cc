@@ -1,6 +1,8 @@
 #ifndef KEYVADB_INCLUDE_DB_H_
 #define KEYVADB_INCLUDE_DB_H_
 
+#include <string>
+
 namespace keyvadb {
 
 class DB {

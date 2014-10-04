@@ -3,9 +3,9 @@
 #include <cstdint>
 #include <cstddef>
 #include <unordered_map>
-#include "node.h"
-#include "store.h"
-#include "delta.h"
+#include "db/node.h"
+#include "db/store.h"
+#include "db/delta.h"
 
 namespace keyvadb {
 
@@ -27,7 +27,7 @@ class Tree {
   store_ptr store_;
 
  public:
-  Tree(store_ptr const& store) : store_(store) {
+  explicit Tree(store_ptr const& store) : store_(store) {
     auto root = store_->Get(rootId);
     if (!root) {
       root = store_->New(firstRootKey(), lastRootKey());
@@ -40,7 +40,7 @@ class Tree {
 
   // Retuns a Journal of the changed nodes sorted by depth
   // The nodes are copies of the ones in the store (ie. copy on write)
-  journal_ptr Add(buffer_ptr& buffer) const {
+  journal_ptr Add(buffer_ptr const& buffer) const {
     auto journal = MakeJournal<BITS>();
     auto root = store_->Get(rootId);
     if (!root) {
@@ -53,19 +53,19 @@ class Tree {
 
   bool IsSane() const {
     bool sane = true;
-    Walk([&](node_ptr n, std::uint32_t) { sane &= n->IsSane(); });
+    Walk([&sane](node_ptr n, std::uint32_t) { sane &= n->IsSane(); });
     return sane;
   }
 
   std::size_t NonSyntheticKeyCount() const {
     std::size_t count = 0;
-    Walk(
-        [&](node_ptr n, std::uint32_t) { count += n->NonSyntheticKeyCount(); });
+    Walk([&count](node_ptr n,
+                  std::uint32_t) { count += n->NonSyntheticKeyCount(); });
     return count;
   }
 
   friend std::ostream& operator<<(std::ostream& stream, const Tree& tree) {
-    tree.Walk([&](node_ptr n, std::uint32_t level) {
+    tree.Walk([&stream](node_ptr n, std::uint32_t level) {
       stream << "Level:\t\t" << level << std::endl << *n;
     });
     return stream;
@@ -75,12 +75,12 @@ class Tree {
   static constexpr key_type firstRootKey() { return Min<BITS>() + 1; }
   static constexpr key_type lastRootKey() { return Max<BITS>(); }
 
-  void add(node_ptr& node, std::uint32_t const level, snapshot_ptr& snapshot,
-           journal_ptr& journal) const {
+  void add(node_ptr const& node, std::uint32_t const level,
+           snapshot_ptr const& snapshot, journal_ptr const& journal) const {
     delta_type delta(node);
     delta.AddKeys(snapshot);
     delta.CheckSanity();
-    if (delta.Current()->EmptyKeyCount() == 0)
+    if (delta.Current()->EmptyKeyCount() == 0) {
       delta.Current()->EachChild([&](const std::size_t i, const key_type& first,
                                      const key_type& last,
                                      const std::uint64_t cid) {
@@ -97,6 +97,7 @@ class Tree {
           add(child, level + 1, snapshot, journal);
         }
       });
+    }
     delta.CheckSanity();
     if (delta.Dirty()) journal->Add(level, delta);
   }

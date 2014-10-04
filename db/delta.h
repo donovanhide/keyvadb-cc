@@ -1,6 +1,10 @@
 #pragma once
+
 #include <cstdint>
 #include <cstddef>
+#include <set>
+
+namespace keyvadb {
 
 template <std::uint32_t BITS>
 class Delta {
@@ -10,15 +14,22 @@ class Delta {
   using key_type = Key<BITS>;
 
  private:
+  std::uint64_t existing_;
   std::uint64_t insertions_;
   std::uint64_t evictions_;
+  std::uint64_t synthetics_;
   std::uint64_t children_;
   node_ptr current_;
   node_ptr previous_;
 
  public:
-  Delta(node_ptr& node)
-      : insertions_(0), evictions_(0), children_(0), current_(node) {}
+  explicit Delta(node_ptr const& node)
+      : existing_(0),
+        insertions_(0),
+        evictions_(0),
+        synthetics_(0),
+        children_(0),
+        current_(node) {}
 
   void Flip() {
     // Copy on write
@@ -28,14 +39,10 @@ class Delta {
     }
   }
 
-  constexpr bool Dirty() const {
-    if (previous_) return true;
-    return false;
-  }
+  constexpr bool Dirty() const { return previous_ ? true : false; }
   constexpr node_ptr Current() const { return current_; }
-  constexpr std::uint64_t TotalChanges() const {
-    return insertions_ - evictions_;
-  }
+  constexpr std::uint64_t Insertions() const { return insertions_; }
+
   void CheckSanity() {
     if (!current_->IsSane()) {
       std::cout << *current_ << std::endl;
@@ -49,16 +56,16 @@ class Delta {
     current_->SetChild(i, cid);
   }
 
-  void AddKeys(snapshot_ptr& snapshot) {
+  void AddKeys(snapshot_ptr const& snapshot) {
     // Full node, nothing to do
     if (current_->EmptyKeyCount() == 0) return;
     auto N = current_->MaxKeys();
     std::set<KeyValue<BITS>> C(current_->NonZeroBegin(), current_->cend());
-    auto existing = C.size();
+    existing_ = C.size();
     C.insert(snapshot->Lower(current_->First()),
              snapshot->Upper(current_->Last()));
     auto combined = C.size();
-    if (existing == combined) {
+    if (existing_ == combined) {
       // All dupes nothing to do
       return;
     }
@@ -66,9 +73,10 @@ class Delta {
     if (combined <= N) {
       // Won't overflow copy right
       std::copy_backward(std::cbegin(C), std::cend(C), current_->end());
-      insertions_ = C.size();
+      insertions_ = C.size() - existing_;
       return;
     }
+    // Handle overflowing nodec
     current_->Clear();
     auto stride = current_->Stride();
     std::size_t index = 0;
@@ -83,22 +91,26 @@ class Delta {
       }
       index = nearest;
     }
-    current_->AddSyntheticKeyValues();
+    synthetics_ = current_->AddSyntheticKeyValues();
     for (auto const& kv : *current_)
       if (!kv.IsSynthetic()) {
         C.erase(kv);
-        insertions_++;
+        // insertions_++;
       }
     for (auto const& kv : C)
       if (snapshot->Add(kv.key, kv.value)) evictions_++;
+    insertions_ = existing_ - evictions_ - synthetics_;
     return;
   }
 
   friend std::ostream& operator<<(std::ostream& stream, const Delta& delta) {
-    stream << "Id: " << delta.current_->Id() << " Insertions: " << std::setw(3)
-           << delta.insertions_ << " Evictions: " << std::setw(3)
-           << delta.evictions_ << " Children: " << std::setw(3)
-           << delta.children_;
+    stream << "Id: " << std::setw(3) << delta.current_->Id()
+           << " Existing: " << std::setw(3) << delta.existing_
+           << " Insertions: " << std::setw(3) << delta.insertions_
+           << " Evictions: " << std::setw(3) << delta.evictions_
+           << " Synthetics: " << std::setw(3) << delta.synthetics_
+           << " Children: " << std::setw(3) << delta.children_;
     return stream;
   }
 };
+}  // namespace keyvadb

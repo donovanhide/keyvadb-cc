@@ -1,8 +1,11 @@
 #pragma once
+
 #include <cstdint>
 #include <cstddef>
 #include <set>
-#include "key.h"
+#include "db/key.h"
+
+namespace keyvadb {
 
 template <uint32_t BITS>
 class Snapshot {
@@ -56,3 +59,5 @@ class Snapshot {
     return stream;
   }
 };
+
+}  // namespace keyvadb

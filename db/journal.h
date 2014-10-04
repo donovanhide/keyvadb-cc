@@ -1,10 +1,13 @@
 #pragma once
+
 #include <cstdint>
 #include <cstddef>
 #include <map>
-#include "key.h"
-#include "store.h"
-#include "delta.h"
+#include "db/key.h"
+#include "db/store.h"
+#include "db/delta.h"
+
+namespace keyvadb {
 
 template <std::uint32_t BITS>
 class Journal {
@@ -20,7 +23,7 @@ class Journal {
     deltas_.emplace(level, delta);
   }
 
-  void Commit(key_store_ptr& store) {
+  void Commit(key_store_ptr const& store) {
     // write deepest nodes first so that no parent can refer
     // to a non-existent child
     for (auto it = std::crbegin(deltas_), end = std::crend(deltas_); it != end;
@@ -30,9 +33,9 @@ class Journal {
 
   constexpr std::size_t Size() const { return deltas_.size(); }
 
-  std::uint64_t TotalChangedKeys() const {
+  std::uint64_t TotalInsertions() const {
     std::uint64_t total = 0;
-    for (auto const& kv : deltas_) total += kv.second.TotalChanges();
+    for (auto const& kv : deltas_) total += kv.second.Insertions();
     return total;
   }
 
@@ -51,3 +54,4 @@ template <std::uint32_t BITS>
 std::unique_ptr<Journal<BITS>> MakeJournal() {
   return std::make_unique<Journal<BITS>>();
 }
+}  // namespace keyvadb

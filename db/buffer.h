@@ -5,9 +5,9 @@
 #include <map>
 #include <vector>
 #include <mutex>
-#include "key.h"
-#include "node.h"
-#include "snapshot.h"
+#include "db/key.h"
+#include "db/node.h"
+#include "db/snapshot.h"
 
 namespace keyvadb {
 

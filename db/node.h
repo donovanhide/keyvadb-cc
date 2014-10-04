@@ -2,13 +2,13 @@
 
 #include <cstdint>
 #include <cstddef>
-#include <array>
+#include <vector>
 #include <algorithm>
 #include <limits>
 #include <mutex>
-#include "key.h"
-#include "snapshot.h"
-#include "journal.h"
+#include "db/key.h"
+#include "db/snapshot.h"
+#include "db/journal.h"
 
 namespace keyvadb {
 
@@ -29,8 +29,8 @@ class Node {
                                         const key_type&, const std::uint64_t)>;
   using snapshot_ptr = std::unique_ptr<Snapshot<BITS>>;
   using node_ptr = std::shared_ptr<Node<BITS>>;
-  using iterator = typename std::vector<KeyValue<BITS>>::iterator;
-  using const_iterator = typename std::vector<KeyValue<BITS>>::const_iterator;
+  using iterator = typename key_values_type::iterator;
+  using const_iterator = typename key_values_type::const_iterator;
 
  private:
   std::uint64_t id_;
@@ -54,10 +54,10 @@ class Node {
                               " " + ToHex(last));
   }
 
-  constexpr std::size_t AddSyntheticKeyValues() {
+  constexpr std::uint64_t AddSyntheticKeyValues() {
     auto const stride = Stride();
     auto cursor = first_ + stride;
-    std::size_t count = 0;
+    std::uint64_t count = 0;
     for (auto& key : keys_) {
       if (key.IsZero()) {
         key = key_value_type{cursor, SyntheticValue};
@@ -69,7 +69,7 @@ class Node {
   }
 
   constexpr void Clear() {
-    for (auto& key : keys_) key = key_value_type{0, EmptyValue};
+    std::fill(begin(), end(), key_value_type{0, EmptyValue});
   }
 
   constexpr void SetChild(std::size_t const i, std::uint64_t const cid) {

@@ -1,16 +1,15 @@
 #pragma once
 
-#include <cstdint>
-#include <cstddef>
-#include <vector>
-#include <limits>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <boost/multiprecision/random.hpp>
 #include <boost/math/tools/precision.hpp>
+#include <cstdint>
+#include <cstddef>
+#include <vector>
+#include <string>
+#include <limits>
 
-using namespace boost::multiprecision;
-using namespace boost::random;
-
+namespace keyvadb {
 static const std::uint64_t EmptyKey = 0;
 
 static const std::uint64_t SyntheticValue =
@@ -19,22 +18,23 @@ static const std::uint64_t EmptyValue = 0;
 
 static const std::uint64_t EmptyChild = 0;
 
-namespace keyvadb {
 template <std::uint32_t BITS>
 using Key =
-    number<cpp_int_backend<BITS, BITS, unsigned_magnitude, checked, void>>;
+    boost::multiprecision::number<boost::multiprecision::cpp_int_backend<
+        BITS, BITS, boost::multiprecision::unsigned_magnitude,
+        boost::multiprecision::checked, void>>;
 
 template <std::uint32_t BITS>
-extern void FromHex(Key<BITS>& key, std::string& s) {
+extern void FromHex(Key<BITS>& key, std::string const& s) {
   key = Key<BITS>("0x" + s);
-};
+}
 
 template <std::uint32_t BITS>
 extern std::string ToHex(Key<BITS> const& key) {
   std::stringstream ss;
   ss << std::setw(BITS / 4) << std::setfill('0') << std::setbase(16) << key;
   return ss.str();
-};
+}
 
 template <std::uint32_t BITS>
 extern const Key<BITS> Max() {
@@ -50,13 +50,13 @@ template <std::uint32_t BITS>
 extern Key<BITS> Distance(Key<BITS> const& a, Key<BITS> const& b) {
   if (a > b) return a - b;
   return b - a;
-};
+}
 
 template <std::uint32_t BITS>
 extern Key<BITS> Stride(Key<BITS> const& start, Key<BITS> const& end,
                         std::uint32_t const& n) {
   return (end - start) / n;
-};
+}
 
 template <std::uint32_t BITS>
 extern void NearestStride(Key<BITS> const& start, Key<BITS> const& stride,
@@ -76,16 +76,17 @@ extern void NearestStride(Key<BITS> const& start, Key<BITS> const& stride,
 }
 
 template <std::uint32_t BITS>
-using KeyGenerator = independent_bits_engine<mt19937, BITS, Key<BITS>>;
+using KeyGenerator = boost::random::independent_bits_engine<
+    boost::random::mt19937, BITS, Key<BITS>>;
 
 template <std::uint32_t BITS>
 extern std::vector<Key<BITS>> RandomKeys(std::size_t n, std::uint32_t seed) {
-  mt19937 base(seed);
+  boost::random::mt19937 base(seed);
   KeyGenerator<BITS> gen(base);
   std::vector<Key<BITS>> v;
   for (std::size_t i = 0; i < n; i++) v.emplace_back(gen());
   return v;
-};
+}
 
 template <std::uint32_t BITS>
 struct KeyValue {

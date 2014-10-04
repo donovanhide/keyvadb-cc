@@ -8,11 +8,11 @@ TEST(TreeTests, General) {
   auto mem = MakeMemoryKeyStore<256>(16);
   auto tree = Tree<256>(mem);
   // Check root has been created
-  // ASSERT_TRUE(tree.IsSane());
+  ASSERT_TRUE(tree.IsSane());
   ASSERT_EQ(1UL, mem->Size());
   // Insert some random values
   // twice with same seed to insert duplicates
-  const std::size_t n = 100;
+  const std::size_t n = 10;
   const std::size_t rounds = 20;
   for (std::size_t i = 0; i < 2; i++) {
     for (std::size_t j = 0; j < rounds; j++) {
@@ -27,7 +27,7 @@ TEST(TreeTests, General) {
         ASSERT_EQ(journal->Size(), 0UL);
       std::cout << *journal << "----" << std::endl;
       ASSERT_TRUE(tree.IsSane());
-      ASSERT_EQ(n, journal->TotalChangedKeys());
+      ASSERT_EQ(n, journal->TotalInsertions());
       journal->Commit(mem);
       ASSERT_TRUE(tree.IsSane());
     }
