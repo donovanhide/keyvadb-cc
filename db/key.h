@@ -16,8 +16,6 @@ static const std::uint64_t SyntheticValue =
     std::numeric_limits<std::uint64_t>::max();
 static const std::uint64_t EmptyValue = 0;
 
-static const std::uint64_t EmptyChild = 0;
-
 template <std::uint32_t BITS>
 using Key =
     boost::multiprecision::number<boost::multiprecision::cpp_int_backend<

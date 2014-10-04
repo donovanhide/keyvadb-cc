@@ -5,12 +5,13 @@
 #include <vector>
 #include <algorithm>
 #include <limits>
-#include <mutex>
 #include "db/key.h"
 #include "db/snapshot.h"
 #include "db/journal.h"
 
 namespace keyvadb {
+
+static const std::uint64_t EmptyChild = 0;
 
 // Node invariants:
 // 1. keys must always be in sorted order,lowest to highest
