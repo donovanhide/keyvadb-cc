@@ -1,5 +1,4 @@
-#include "gtest/gtest.h"
-#include "common.h"
+#include "tests/common.h"
 #include "db/buffer.h"
 
 using namespace keyvadb;

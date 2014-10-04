@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include "gtest/gtest.h"
 
 static std::string h0(
     "0000000000000000000000000000000000000000000000000000000000000000");

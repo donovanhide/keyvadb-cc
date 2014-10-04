@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <set>
+#include <algorithm>
 
 namespace keyvadb {
 
@@ -41,7 +42,9 @@ class Delta {
 
   constexpr bool Dirty() const { return previous_ ? true : false; }
   constexpr node_ptr Current() const { return current_; }
-  constexpr std::uint64_t Insertions() const { return insertions_; }
+  constexpr std::uint64_t Insertions() const {
+    return insertions_ - evictions_;
+  }
 
   void CheckSanity() {
     if (!current_->IsSane()) {
@@ -60,28 +63,32 @@ class Delta {
     // Full node, nothing to do
     if (current_->EmptyKeyCount() == 0) return;
     auto N = current_->MaxKeys();
-    std::set<KeyValue<BITS>> C(current_->NonZeroBegin(), current_->cend());
-    existing_ = C.size();
-    C.insert(snapshot->Lower(current_->First()),
-             snapshot->Upper(current_->Last()));
-    auto combined = C.size();
-    if (existing_ == combined) {
+    std::set<KeyValue<BITS>> candidates(snapshot->Lower(current_->First()),
+                                        snapshot->Upper(current_->Last()));
+    std::set<KeyValue<BITS>> existing(current_->NonZeroBegin(),
+                                      current_->cend());
+    existing_ = existing.size();
+    std::set<KeyValue<BITS>> combined(candidates);
+    std::copy(std::cbegin(existing), std::cend(existing),
+              std::inserter(combined, std::end(combined)));
+    if (existing_ == combined.size()) {
       // All dupes nothing to do
       return;
     }
     Flip();
-    if (combined <= N) {
+    if (combined.size() <= N) {
       // Won't overflow copy right
-      std::copy_backward(std::cbegin(C), std::cend(C), current_->end());
-      insertions_ = C.size() - existing_;
+      std::copy_backward(std::cbegin(combined), std::cend(combined),
+                         current_->end());
+      insertions_ = combined.size() - existing_;
       return;
     }
-    // Handle overflowing nodec
+    // Handle overflowing node
     current_->Clear();
     auto stride = current_->Stride();
     std::size_t index = 0;
     auto best = Max<BITS>();
-    for (auto const& kv : C) {
+    for (auto const& kv : combined) {
       std::uint32_t nearest;
       key_type distance;
       NearestStride(current_->First(), stride, kv.key, distance, nearest);
@@ -92,19 +99,22 @@ class Delta {
       index = nearest;
     }
     synthetics_ = current_->AddSyntheticKeyValues();
-    for (auto const& kv : *current_)
-      if (!kv.IsSynthetic()) {
-        C.erase(kv);
-        // insertions_++;
+    for (auto const& kv : *current_) {
+      if (kv.IsSynthetic()) continue;
+      if (candidates.count(kv) > 0) {
+        insertions_++;
       }
-    for (auto const& kv : C)
-      if (snapshot->Add(kv.key, kv.value)) evictions_++;
-    insertions_ = existing_ - evictions_ - synthetics_;
+      existing.erase(kv);
+    }
+    for (auto const& kv : existing) {
+      evictions_++;
+      snapshot->Add(kv.key, kv.value);
+    }
     return;
   }
 
   friend std::ostream& operator<<(std::ostream& stream, const Delta& delta) {
-    stream << "Id: " << std::setw(3) << delta.current_->Id()
+    stream << "Id: " << std::setw(12) << delta.current_->Id()
            << " Existing: " << std::setw(3) << delta.existing_
            << " Insertions: " << std::setw(3) << delta.insertions_
            << " Evictions: " << std::setw(3) << delta.evictions_
