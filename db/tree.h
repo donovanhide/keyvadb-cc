@@ -15,7 +15,6 @@ class Tree {
   using key_type = Key<BITS>;
   using key_value_type = KeyValue<BITS>;
   using store_ptr = std::shared_ptr<KeyStore<BITS>>;
-  using buffer_ptr = std::shared_ptr<Buffer<BITS>>;
   using node_ptr = std::shared_ptr<Node<BITS>>;
   using node_func = std::function<void(node_ptr, std::uint32_t)>;
   using journal_ptr = std::unique_ptr<Journal<BITS>>;
@@ -39,10 +38,9 @@ class Tree {
 
   // Retuns a Journal of the changed nodes sorted by depth
   // The nodes are copies of the ones in the store (ie. copy on write)
-  journal_ptr Add(buffer_ptr const& buffer) const {
+  journal_ptr Add(snapshot_ptr const& snapshot) const {
     auto journal = MakeJournal<BITS>();
     auto root = store_->Get(rootId);
-    auto snapshot = buffer->GetSnapshot();
     add(root, 0, snapshot, journal);
     return journal;
   }

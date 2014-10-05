@@ -49,4 +49,11 @@ TEST(KeyTests, General) {
   NearestStride(zero, stride, two, distance, nearest);
   ASSERT_EQ(ones - two, distance);
   ASSERT_EQ(0UL, nearest);
+  // From/To bytes
+  auto f = ToBytes(first);
+  auto f2 = FromBytes<256>(f);
+  ASSERT_EQ(first, f2);
+  auto l = ToBytes(last);
+  auto l2 = FromBytes<256>(l);
+  ASSERT_EQ(last, l2);
 }

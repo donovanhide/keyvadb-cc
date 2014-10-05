@@ -24,6 +24,7 @@ class ValueStore {
   virtual std::string Get(std::uint64_t const) const = 0;
   virtual key_value_type Set(key_type const& key, std::string const&) = 0;
   virtual std::size_t Size() const = 0;
+  virtual void Close() = 0;
 };
 
 template <std::uint32_t BITS>
@@ -40,6 +41,7 @@ class KeyStore {
   virtual bool Has(std::uint64_t const id) = 0;
   virtual void Set(node_ptr const& node) = 0;
   virtual std::size_t Size() const = 0;
+  virtual void Close() = 0;
 };
 
 }  // namespace keyvadb

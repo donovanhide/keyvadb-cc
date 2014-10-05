@@ -24,6 +24,7 @@ class MemoryValueStore : public ValueStore<BITS> {
     return kv;
   };
   std::size_t Size() const override { return map_.size(); }
+  void Close() override {}
 };
 
 template <std::uint32_t BITS>
@@ -56,6 +57,7 @@ class MemoryKeyStore : public KeyStore<BITS> {
   node_ptr Get(std::uint64_t const id) override { return map_.at(id); }
   void Set(node_ptr const& node) override { map_[node->Id()] = node; }
   std::size_t Size() const override { return id_; }
+  void Close() override {}
 };
 
 template <std::uint32_t BITS>

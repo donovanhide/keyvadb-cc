@@ -22,6 +22,25 @@ using Key =
         BITS, BITS, boost::multiprecision::unsigned_magnitude,
         boost::multiprecision::checked, void>>;
 
+// TODO(DH): Check this is portable!
+template <std::uint32_t BITS>
+extern std::string ToBytes(Key<BITS> const& key) {
+  auto bytes = key.backend().limbs();
+  auto length = key.backend().size() * sizeof(*key.backend().limbs());
+  auto s = std::string(reinterpret_cast<const char*>(bytes), length);
+  return s;
+}
+
+template <std::uint32_t BITS>
+extern Key<BITS> FromBytes(std::string const& str) {
+  Key<BITS> key;
+  auto length = str.size() / sizeof(*key.backend().limbs());
+  key.backend().resize(length, length);
+  auto bytes = key.backend().limbs();
+  std::memcpy(bytes, str.data(), str.size());
+  return key;
+}
+
 template <std::uint32_t BITS>
 extern void FromHex(Key<BITS>& key, std::string const& s) {
   key = Key<BITS>("0x" + s);
