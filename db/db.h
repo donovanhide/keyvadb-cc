@@ -1,7 +1,8 @@
 #pragma once
 
 #include <string>
-#include <system_error>
+#include <mutex>
+#include <thread>
 #include "db/memory.h"
 #include "db/buffer.h"
 #include "db/tree.h"
@@ -20,13 +21,20 @@ class DB {
   key_store_type keys_;
   value_store_type values_;
   buffer_type buffer_;
+  bool close_;
+  std::thread thread_;
+  std::condition_variable cond_;
+  std::mutex mutex_;
 
  public:
-  DB(value_store_type const& values, key_store_type const& keys)
+  DB(key_store_type const& keys, value_store_type const& values)
       : tree_(tree_type(keys)),
         keys_(keys),
         values_(values),
-        buffer_(MakeBuffer<256>()) {}
+        buffer_(MakeBuffer<256>()),
+        close_(false),
+        thread_(&DB::flushThread, this) {}
+  DB(DB const&) = delete;
   DB& operator=(const DB&) = delete;
 
   std::string Get(std::string const& key) {
@@ -46,31 +54,35 @@ class DB {
     buffer_->Add(kv.key, kv.value);
   }
 
-  void Flush() {
-    std::cout << "Flushing" << std::endl;
-    auto snapshot = buffer_->GetSnapshot();
-    auto journal = tree_.Add(snapshot);
-    journal->Commit(keys_);
-    buffer_->ClearSnapshot(snapshot);
-    std::cout << "Flushed" << std::endl;
-  }
-
   void Close() {
-    Flush();
+    close_ = true;
+    cond_.notify_all();
+    thread_.join();
     values_->Close();
     keys_->Close();
   }
+
+ private:
+  void flush() {
+    auto snapshot = buffer_->GetSnapshot();
+    std::cout << "Flushing " << snapshot->Size() << " keys" << std::endl;
+    auto journal = tree_.Add(snapshot);
+    journal->Commit(keys_);
+    buffer_->ClearSnapshot(snapshot);
+    std::cout << "Flushed " << snapshot->Size() << " keys into "
+              << journal->Size() << " nodes" << std::endl;
+  }
+
+  void flushThread() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    for (;;) {
+      bool stop = cond_.wait_for(lock, std::chrono::seconds(1),
+                                 [&]() { return close_; });
+      flush();
+      if (stop) break;
+    }
+    // thread exits
+  }
 };
-
-template <std::uint32_t BITS>
-DB<BITS> MakeMemoryDB(std::uint64_t const degree) {
-  return DB<BITS>(MakeMemoryValueStore<BITS>(),
-                  MakeMemoryKeyStore<BITS>(degree));
-}
-
-// template <std::uint32_t BITS>
-// std::error_code OpenFileDB(std::string const& name, DB<BITS>* db) {
-//   return;
-// }
 
 }  // namespace keyvadb

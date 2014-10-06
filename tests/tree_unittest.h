@@ -20,7 +20,7 @@ TEST(TreeTests, General) {
       // Use j as seed
       buffer->FillRandom(n, j);
       ASSERT_EQ(n, buffer->Size());
-      auto journal = tree.Add(buffer);
+      auto journal = tree.Add(buffer->GetSnapshot());
       ASSERT_TRUE(tree.IsSane());
       journal->Commit(mem);
       ASSERT_TRUE(tree.IsSane());

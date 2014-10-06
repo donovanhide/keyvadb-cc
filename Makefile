@@ -38,4 +38,4 @@ kvd.o : $(TOOLS_DIR)/kvd.cc db/*.h
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $(TOOLS_DIR)/kvd.cc
 
 kvd : kvd.o
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -O3 $^ -o $@ $(LDFLAGS)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
