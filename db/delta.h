@@ -66,11 +66,11 @@ class Delta {
     std::set<KeyValue<BITS>> candidates(snapshot->Lower(current_->First()),
                                         snapshot->Upper(current_->Last()));
     std::set<KeyValue<BITS>> existing(current_->NonZeroBegin(),
-                                      current_->cend());
+                                      cend(current_->keys));
     existing_ = existing.size();
     std::set<KeyValue<BITS>> combined(candidates);
-    std::copy(std::cbegin(existing), std::cend(existing),
-              std::inserter(combined, std::end(combined)));
+    std::copy(cbegin(existing), cend(existing),
+              std::inserter(combined, end(combined)));
     if (existing_ == combined.size()) {
       // All dupes nothing to do
       return;
@@ -78,8 +78,7 @@ class Delta {
     Flip();
     if (combined.size() <= N) {
       // Won't overflow copy right
-      std::copy_backward(std::cbegin(combined), std::cend(combined),
-                         current_->end());
+      std::copy_backward(cbegin(combined), cend(combined), end(current_->keys));
       insertions_ = combined.size() - existing_;
       return;
     }
@@ -99,7 +98,7 @@ class Delta {
       index = nearest;
     }
     synthetics_ = current_->AddSyntheticKeyValues();
-    for (auto const& kv : *current_) {
+    for (auto const& kv : current_->keys) {
       if (kv.IsSynthetic()) continue;
       if (candidates.count(kv) > 0) {
         insertions_++;

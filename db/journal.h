@@ -26,8 +26,7 @@ class Journal {
   void Commit(key_store_ptr const& store) {
     // write deepest nodes first so that no parent can refer
     // to a non-existent child
-    for (auto it = std::crbegin(deltas_), end = std::crend(deltas_); it != end;
-         ++it)
+    for (auto it = crbegin(deltas_), end = crend(deltas_); it != end; ++it)
       store->Set(it->second.Current());
   }
 

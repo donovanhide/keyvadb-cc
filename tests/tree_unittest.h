@@ -33,7 +33,8 @@ TEST(TreeTests, General) {
         ASSERT_EQ(0UL, journal->TotalInsertions());
       }
       auto snapshot = buffer->GetSnapshot();
-      for (auto const& kv : *snapshot) ASSERT_EQ(kv.value, tree.Get(kv.key));
+      for (auto const& kv : snapshot->keys)
+        ASSERT_EQ(kv.value, tree.Get(kv.key));
 
       // std::cout << *journal << "----" << std::endl;
     }

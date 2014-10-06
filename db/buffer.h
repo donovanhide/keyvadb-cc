@@ -48,7 +48,7 @@ class Buffer {
 
   void ClearSnapshot(snapshot_type const& snapshot) {
     std::lock_guard<std::mutex> lock(lock_);
-    for (auto const& kv : *snapshot) map_.erase(kv.key);
+    for (auto const& kv : snapshot->keys) map_.erase(kv.key);
   }
 
   std::size_t Size() const {

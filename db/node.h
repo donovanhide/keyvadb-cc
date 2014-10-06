@@ -38,18 +38,19 @@ class Node {
   std::uint32_t degree_;
   key_type first_;
   key_type last_;
-  key_values_type keys_;
   children_type children_;
 
  public:
+  key_values_type keys;
+
   Node(std::uint64_t const id, std::uint32_t degree, key_type const& first,
        key_type const& last)
       : id_(id),
         degree_(degree),
         first_(first),
         last_(last),
-        keys_(degree - 1),
-        children_(degree) {
+        children_(degree),
+        keys(degree - 1) {
     if (first >= last)
       throw std::domain_error("first must be lower than last:" + ToHex(first) +
                               " " + ToHex(last));
@@ -59,7 +60,7 @@ class Node {
     auto const stride = Stride();
     auto cursor = first_ + stride;
     std::uint64_t count = 0;
-    for (auto& key : keys_) {
+    for (auto& key : keys) {
       if (key.IsZero()) {
         key = key_value_type{cursor, SyntheticValue};
         count++;
@@ -70,7 +71,7 @@ class Node {
   }
 
   constexpr void Clear() {
-    std::fill(begin(), end(), key_value_type{0, EmptyValue});
+    std::fill(begin(keys), end(keys), key_value_type{0, EmptyValue});
   }
 
   constexpr void SetChild(std::size_t const i, std::uint64_t const cid) {
@@ -84,38 +85,38 @@ class Node {
     auto length = Degree();
     for (std::size_t i = 0; i < length; i++) {
       if (i == 0) {
-        if (!keys_.at(i).IsZero())
-          f(i, first_, keys_.at(i).key, children_.at(i));
+        if (!keys.at(i).IsZero()) f(i, first_, keys.at(i).key, children_.at(i));
       } else if (i == length - 1) {
-        if (!keys_.at(i - 1).IsZero())
-          f(i, keys_.at(i - 1).key, last_, children_.at(i));
+        if (!keys.at(i - 1).IsZero())
+          f(i, keys.at(i - 1).key, last_, children_.at(i));
       } else {
-        if (!keys_.at(i - 1).IsZero() && !keys_.at(i).IsZero())
-          f(i, keys_.at(i - 1).key, keys_.at(i).key, children_.at(i));
+        if (!keys.at(i - 1).IsZero() && !keys.at(i).IsZero())
+          f(i, keys.at(i - 1).key, keys.at(i).key, children_.at(i));
       }
     }
   }
   constexpr std::uint64_t Find(key_type const& key) const {
     auto found = std::find_if(
-        cbegin(), cend(),
+        cbegin(keys), cend(keys),
         [&key](key_value_type const& kv) { return kv.key == key; });
-    return (found != cend()) ? found->value : EmptyValue;
+    return (found != cend(keys)) ? found->value : EmptyValue;
   }
 
   constexpr key_value_type GetKeyValue(std::size_t const i) const {
-    return keys_.at(i);
+    return keys.at(i);
   }
+
   constexpr void SetKeyValue(std::size_t const i, key_value_type const& kv) {
-    keys_.at(i) = kv;
+    keys.at(i) = kv;
   }
 
   constexpr bool IsSane() const {
     if (first_ >= last_) return false;
-    if (!std::is_sorted(keys_.cbegin(), keys_.cend())) return false;
+    if (!std::is_sorted(cbegin(keys), cend(keys))) return false;
     for (std::size_t i = 1; i < Degree() - 1; i++) {
-      if (!keys_.at(i).IsZero() && keys_.at(i) == keys_.at(i - 1)) return false;
-      if (!keys_.at(i).IsZero() &&
-          (keys_.at(i).key <= first_ || keys_.at(i).key >= last_))
+      if (!keys.at(i).IsZero() && keys.at(i) == keys.at(i - 1)) return false;
+      if (!keys.at(i).IsZero() &&
+          (keys.at(i).key <= first_ || keys.at(i).key >= last_))
         return false;
     }
     if (EmptyKeyCount() > 0 && EmptyChildCount() != Degree()) return false;
@@ -126,35 +127,29 @@ class Node {
   constexpr key_type First() const { return first_; }
   constexpr key_type Last() const { return last_; }
 
-  // Iterators
-  constexpr iterator begin() { return std::begin(keys_); }
-  constexpr iterator end() { return std::end(keys_); }
-  constexpr const_iterator end() const { return std::cend(keys_); }
-  constexpr const_iterator cbegin() const { return std::cbegin(keys_); }
-  constexpr const_iterator cend() const { return std::cend(keys_); }
   constexpr const_iterator NonZeroBegin() const {
     return std::find_if_not(
-        std::cbegin(keys_), std::cend(keys_),
+        cbegin(keys), cend(keys),
         [](key_value_type const& kv) { return kv.IsZero(); });
   }
   constexpr bool Empty() const { return EmptyKeyCount() == MaxKeys(); }
 
   constexpr std::size_t NonSyntheticKeyCount() const {
-    return std::count_if(std::cbegin(keys_), std::cend(keys_),
+    return std::count_if(cbegin(keys), cend(keys),
                          [](key_value_type const& kv) {
       return !kv.IsZero() && !kv.IsSynthetic();
     });
   }
   constexpr std::size_t NonEmptyKeyCount() const {
-    return std::distance(NonZeroBegin(), std::cend(keys_));
+    return std::distance(NonZeroBegin(), cend(keys));
   }
   constexpr std::size_t EmptyKeyCount() const {
-    return std::distance(std::cbegin(keys_), NonZeroBegin());
+    return std::distance(cbegin(keys), NonZeroBegin());
   }
   constexpr std::size_t EmptyChildCount() const {
-    return std::count(std::cbegin(children_), std::cend(children_), EmptyChild);
+    return std::count(cbegin(children_), cend(children_), EmptyChild);
   }
-  constexpr std::size_t MaxKeys() const { return keys_.size(); }
+  constexpr std::size_t MaxKeys() const { return keys.size(); }
   constexpr std::size_t Degree() const { return children_.size(); }
   constexpr key_type Distance() const {
     return keyvadb::Distance(first_, last_);
@@ -175,12 +170,12 @@ class Node {
     stream << "--------" << std::endl;
     for (std::size_t i = 0; i < node.MaxKeys(); i++) {
       stream << std::setfill('0') << std::setw(3) << i << " ";
-      stream << ToHex(node.keys_.at(i).key) << " ";
-      if (node.keys_.at(i).value == SyntheticValue) {
+      stream << ToHex(node.keys.at(i).key) << " ";
+      if (node.keys.at(i).value == SyntheticValue) {
         stream << "Synthetic"
                << " ";
       } else {
-        stream << node.keys_.at(i).value << " ";
+        stream << node.keys.at(i).value << " ";
       }
       stream << node.children_.at(i) << " " << node.children_.at(i + 1);
       stream << std::endl;
