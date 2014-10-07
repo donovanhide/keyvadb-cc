@@ -1,12 +1,16 @@
 #include <boost/algorithm/hex.hpp>
 #include <iostream>
 #include <algorithm>
+#include <vector>
 #include <string>
 #include <csignal>
+#include <chrono>
 #include "db/db.h"
 
 using boost::algorithm::unhex;
+using boost::algorithm::hex;
 using namespace keyvadb;
+using namespace std::chrono;
 
 // call function for each line
 // returns an iterator to the first unconsumed character
@@ -18,7 +22,6 @@ FwdIt for_each_line(FwdIt first, FwdIt last, Function f) {
     f(std::string(first, iter));
     first = iter + 1;
   }
-  // std::cout << "tail" << std::string(first, last) << std::endl;
   return first;
 }
 
@@ -26,21 +29,28 @@ int main() {
   auto values = MakeMemoryValueStore<256>();
   auto keys = MakeMemoryKeyStore<256>(85);
   DB<256> db(keys, values);
+  std::vector<std::string> inserted;
   std::ios_base::sync_with_stdio(false);
   std::array<char, 1048576> str;
-  auto start = begin(str);
+  auto first = begin(str);
   for (; !std::cin.eof();) {
-    std::cin.read(start, std::distance(start, end(str)));
-    auto last = start + std::cin.gcount();
-    last = for_each_line(begin(str), last, [&](std::string const& line) {
-      // std::cout << line << std::endl;
+    std::cin.read(first, std::distance(first, end(str)));
+    auto last = first + std::cin.gcount();
+    last = for_each_line(begin(str), last,
+                         [&db, &inserted](std::string const& line) {
       if (line.find(':') != 64) throw std::invalid_argument("bad line format");
       auto key = unhex(line.substr(0, 64));
       auto value = unhex(line.substr(65, std::string::npos));
       db.Put(key, value);
+      inserted.push_back(key);
     });
-    start = std::copy(last, end(str), begin(str));
+    first = std::copy(last, end(str), begin(str));
   }
+  auto start = high_resolution_clock::now();
+  for (auto const& key : inserted) db.Get(key);
+  auto finish = high_resolution_clock::now();
+  auto dur = duration_cast<nanoseconds>(finish - start);
+  std::cout << dur.count() / inserted.size() << " ns/key" << std::endl;
   db.Close();
   return 0;
 }
