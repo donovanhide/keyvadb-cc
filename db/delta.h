@@ -66,11 +66,11 @@ class Delta {
     std::set<KeyValue<BITS>> candidates(snapshot->Lower(current_->First()),
                                         snapshot->Upper(current_->Last()));
     std::set<KeyValue<BITS>> existing(current_->NonZeroBegin(),
-                                      cend(current_->keys));
+                                      current_->keys.cend());
     existing_ = existing.size();
     std::set<KeyValue<BITS>> combined(candidates);
-    std::copy(cbegin(existing), cend(existing),
-              std::inserter(combined, end(combined)));
+    std::copy(existing.cbegin(), existing.cend(),
+              std::inserter(combined, combined.end()));
     if (existing_ == combined.size()) {
       // All dupes nothing to do
       return;
@@ -78,7 +78,8 @@ class Delta {
     Flip();
     if (combined.size() <= N) {
       // Won't overflow copy right
-      std::copy_backward(cbegin(combined), cend(combined), end(current_->keys));
+      std::copy_backward(combined.cbegin(), combined.cend(),
+                         current_->keys.end());
       insertions_ = combined.size() - existing_;
       return;
     }

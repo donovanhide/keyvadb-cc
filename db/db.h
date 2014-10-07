@@ -2,6 +2,7 @@
 
 #include <string>
 #include <mutex>
+#include <condition_variable>
 #include <thread>
 #include "db/memory.h"
 #include "db/buffer.h"

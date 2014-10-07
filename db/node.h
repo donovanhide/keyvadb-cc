@@ -56,7 +56,7 @@ class Node {
                               " " + ToHex(last));
   }
 
-  constexpr std::uint64_t AddSyntheticKeyValues() {
+  std::uint64_t AddSyntheticKeyValues() {
     auto const stride = Stride();
     auto cursor = first_ + stride;
     std::uint64_t count = 0;
@@ -70,18 +70,19 @@ class Node {
     return count;
   }
 
-  constexpr void Clear() {
-    std::fill(begin(keys), end(keys), key_value_type{0, EmptyValue});
+  void Clear() {
+    std::fill(keys.begin(), keys.end(), key_value_type{0, EmptyValue});
   }
 
-  constexpr void SetChild(std::size_t const i, std::uint64_t const cid) {
+  void SetChild(std::size_t const i, std::uint64_t const cid) {
     children_.at(i) = cid;
   }
+
   constexpr std::uint64_t GetChild(std::size_t const i) const {
     return children_.at(i);
   }
 
-  constexpr void EachChild(child_func f) const {
+  void EachChild(child_func f) const {
     auto length = Degree();
     for (std::size_t i = 0; i < length; i++) {
       if (i == 0) {
@@ -97,22 +98,22 @@ class Node {
   }
   constexpr std::uint64_t Find(key_type const& key) const {
     auto found = std::find_if(
-        cbegin(keys), cend(keys),
+        keys.cbegin(), keys.cend(),
         [&key](key_value_type const& kv) { return kv.key == key; });
-    return (found != cend(keys)) ? found->value : EmptyValue;
+    return (found != keys.cend()) ? found->value : EmptyValue;
   }
 
   constexpr key_value_type GetKeyValue(std::size_t const i) const {
     return keys.at(i);
   }
 
-  constexpr void SetKeyValue(std::size_t const i, key_value_type const& kv) {
+  void SetKeyValue(std::size_t const i, key_value_type const& kv) {
     keys.at(i) = kv;
   }
 
   constexpr bool IsSane() const {
     if (first_ >= last_) return false;
-    if (!std::is_sorted(cbegin(keys), cend(keys))) return false;
+    if (!std::is_sorted(keys.cbegin(), keys.cend())) return false;
     for (std::size_t i = 1; i < Degree() - 1; i++) {
       if (!keys.at(i).IsZero() && keys.at(i) == keys.at(i - 1)) return false;
       if (!keys.at(i).IsZero() &&
@@ -129,25 +130,25 @@ class Node {
 
   constexpr const_iterator NonZeroBegin() const {
     return std::find_if_not(
-        cbegin(keys), cend(keys),
+        keys.cbegin(), keys.cend(),
         [](key_value_type const& kv) { return kv.IsZero(); });
   }
   constexpr bool Empty() const { return EmptyKeyCount() == MaxKeys(); }
 
   constexpr std::size_t NonSyntheticKeyCount() const {
-    return std::count_if(cbegin(keys), cend(keys),
+    return std::count_if(keys.cbegin(), keys.cend(),
                          [](key_value_type const& kv) {
       return !kv.IsZero() && !kv.IsSynthetic();
     });
   }
   constexpr std::size_t NonEmptyKeyCount() const {
-    return std::distance(NonZeroBegin(), cend(keys));
+    return std::distance(NonZeroBegin(), keys.cend());
   }
   constexpr std::size_t EmptyKeyCount() const {
-    return std::distance(cbegin(keys), NonZeroBegin());
+    return std::distance(keys.cbegin(), NonZeroBegin());
   }
   constexpr std::size_t EmptyChildCount() const {
-    return std::count(cbegin(children_), cend(children_), EmptyChild);
+    return std::count(children_.cbegin(), children_.cend(), EmptyChild);
   }
   constexpr std::size_t MaxKeys() const { return keys.size(); }
   constexpr std::size_t Degree() const { return children_.size(); }

@@ -7,11 +7,11 @@ GTEST_H = $(TEST_DIR)/gtest/gtest.h
 GTEST_ALL_C = $(TEST_DIR)/gtest/gtest-all.cc
 GTEST_MAIN_CC = $(TEST_DIR)/gtest/gtest_main.cc
 
-cxxflags.debug := -g -O1 -march=native
-cxxflags.release := -g -O3 -march=native -DNDEBUG
+cxxflags.debug := -g -O1 
+cxxflags.release := -g -O3 -DNDEBUG
 
 CPPFLAGS += -I$(TEST_DIR) -I.  -isystem $(TEST_DIR)/gtest
-CXXFLAGS += ${cxxflags.${BUILD}} -Wall -Wextra -std=c++1y -DGTEST_LANG_CXX11=1
+CXXFLAGS += ${cxxflags.${BUILD}} -Wall -Wextra -Wpedantic -std=c++1y -DGTEST_LANG_CXX11=1
 LDFLAGS +=-lpthread
 
 all : keyvadb_unittests kvd
