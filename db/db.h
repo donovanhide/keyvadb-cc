@@ -13,6 +13,7 @@ namespace keyvadb {
 
 template <std::uint32_t BITS>
 class DB {
+  using key_value_type = KeyValue<BITS>;
   using value_store_type = std::shared_ptr<ValueStore<BITS>>;
   using key_store_type = std::shared_ptr<KeyStore<BITS>>;
   using buffer_type = std::shared_ptr<Buffer<BITS>>;
@@ -44,7 +45,7 @@ class DB {
     return values_->Open();
   }
 
-  std::string Get(std::string const& key) {
+  std::error_code Get(std::string const& key, std::string* value) {
     auto k = FromBytes<BITS>(key);
     std::uint64_t valueId;
     try {
@@ -52,13 +53,14 @@ class DB {
     } catch (std::out_of_range) {
       valueId = tree_.Get(k);
     }
-    return values_->Get(valueId);
+    return values_->Get(valueId, value);
   }
 
-  void Put(std::string const& key, std::string const& value) {
-    auto k = FromBytes<BITS>(key);
-    auto kv = values_->Set(k, value);
+  std::error_code Put(std::string const& key, std::string const& value) {
+    key_value_type kv;
+    if (auto err = values_->Set(key, value, kv)) return err;
     buffer_->Add(kv.key, kv.value);
+    return std::error_code();
   }
 
   std::error_code Close() {

@@ -20,10 +20,12 @@ class ValueStore {
  public:
   virtual ~ValueStore() = default;
 
-  virtual std::error_code Open() = 0;
-  virtual std::error_code Close() = 0;
-  virtual std::string Get(std::uint64_t const) const = 0;
-  virtual key_value_type Set(key_type const& key, std::string const&) = 0;
+  virtual std::error_code Open() = 0;   // Not threadsafe
+  virtual std::error_code Close() = 0;  // Not threadsafe
+  virtual std::error_code Clear() = 0;  // Not threadsafe
+  virtual std::error_code Get(std::uint64_t const, std::string*) const = 0;
+  virtual std::error_code Set(std::string const& key, std::string const&,
+                              key_value_type&) = 0;
 };
 
 template <std::uint32_t BITS>

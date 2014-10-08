@@ -45,13 +45,17 @@ int main() {
       if (line.find(':') != 64) throw std::invalid_argument("bad line format");
       auto key = unhex(line.substr(0, 64));
       auto value = unhex(line.substr(65, std::string::npos));
-      db.Put(key, value);
+      if (auto err = db.Put(key, value)) {
+        std::cerr << err << std::endl;
+      }
       inserted.push_back(key);
     });
     first = std::copy(last, end(str), begin(str));
   }
   auto start = high_resolution_clock::now();
-  for (auto const& key : inserted) db.Get(key);
+  std::string value;
+  for (auto const& key : inserted)
+    if (auto err = db.Get(key, &value)) std::cerr << err << std::endl;
   auto finish = high_resolution_clock::now();
   auto dur = duration_cast<nanoseconds>(finish - start);
   std::cout << dur.count() / inserted.size() << " ns/key" << std::endl;

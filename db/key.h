@@ -73,6 +73,12 @@ extern const Key<BITS> Max() {
 }
 
 template <std::uint32_t BITS>
+extern std::size_t MaxSize() {
+  auto max = Max<BITS>();
+  return max.backend().size() * sizeof(*max.backend().limbs());
+}
+
+template <std::uint32_t BITS>
 extern const Key<BITS> Min() {
   return boost::math::tools::min_value<Key<BITS>>();
 }

@@ -22,11 +22,19 @@ class MemoryValueStore : public ValueStore<BITS> {
   MemoryValueStore() : id_(0) {}
   std::error_code Open() override { return std::error_code(); }
   std::error_code Close() override { return std::error_code(); }
-  std::string Get(std::uint64_t const id) const override { return map_.at(id); }
-  key_value_type Set(key_type const& key, std::string const& value) override {
-    auto kv = key_value_type{key, id_++};
+  std::error_code Clear() override {
+    map_.clear();
+    return std::error_code();
+  }
+  std::error_code Get(std::uint64_t const id, std::string* str) const override {
+    str->assign(map_.at(id));
+    return std::error_code();
+  }
+  std::error_code Set(std::string const& key, std::string const& value,
+                      key_value_type& kv) override {
+    kv = {FromBytes<BITS>(key), id_++};
     map_[kv.value] = value;
-    return kv;
+    return std::error_code();
   };
 };
 
