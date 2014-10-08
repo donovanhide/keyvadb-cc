@@ -4,6 +4,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <thread>
+#include <system_error>
 #include "db/memory.h"
 #include "db/buffer.h"
 #include "db/tree.h"
@@ -38,6 +39,11 @@ class DB {
   DB(DB const&) = delete;
   DB& operator=(const DB&) = delete;
 
+  std::error_code Open() {
+    if (auto err = keys_->Open()) return err;
+    return values_->Open();
+  }
+
   std::string Get(std::string const& key) {
     auto k = FromBytes<BITS>(key);
     std::uint64_t valueId;
@@ -55,12 +61,12 @@ class DB {
     buffer_->Add(kv.key, kv.value);
   }
 
-  void Close() {
+  std::error_code Close() {
     close_ = true;
     cond_.notify_all();
     thread_.join();
-    values_->Close();
-    keys_->Close();
+    if (auto err = values_->Close()) return err;
+    return keys_->Close();
   }
 
  private:

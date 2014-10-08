@@ -1,6 +1,9 @@
 #pragma once
 
 #include <string>
+#include <system_error>
+#include <atomic>
+#include <unordered_map>
 #include "db/store.h"
 
 namespace keyvadb {
@@ -17,14 +20,14 @@ class MemoryValueStore : public ValueStore<BITS> {
 
  public:
   MemoryValueStore() : id_(0) {}
+  std::error_code Open() override { return std::error_code(); }
+  std::error_code Close() override { return std::error_code(); }
   std::string Get(std::uint64_t const id) const override { return map_.at(id); }
   key_value_type Set(key_type const& key, std::string const& value) override {
     auto kv = key_value_type{key, id_++};
     map_[kv.value] = value;
     return kv;
   };
-  std::size_t Size() const override { return map_.size(); }
-  void Close() override {}
 };
 
 template <std::uint32_t BITS>
@@ -48,6 +51,9 @@ class MemoryKeyStore : public KeyStore<BITS> {
   explicit MemoryKeyStore(std::uint32_t const degree)
       : degree_(degree), id_(0) {}
 
+  std::error_code Open() override { return std::error_code(); }
+  std::error_code Close() override { return std::error_code(); }
+
   node_ptr New(const key_type& first, const key_type& last) override {
     return std::make_shared<node_type>(id_++, degree_, first, last);
   }
@@ -57,7 +63,6 @@ class MemoryKeyStore : public KeyStore<BITS> {
   node_ptr Get(std::uint64_t const id) override { return map_.at(id); }
   void Set(node_ptr const& node) override { map_[node->Id()] = node; }
   std::size_t Size() const override { return id_; }
-  void Close() override {}
 };
 
 template <std::uint32_t BITS>

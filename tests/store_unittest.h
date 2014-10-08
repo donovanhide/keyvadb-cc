@@ -1,5 +1,6 @@
 #include "tests/common.h"
 #include "db/memory.h"
+#include "db/file.h"
 
 using namespace keyvadb;
 
@@ -12,7 +13,6 @@ TEST(StoreTests, Memory) {
   auto key = first + 1;
   auto values = MakeMemoryValueStore<256>();
   auto kv = values->Set(key, "This is a test");
-  ASSERT_EQ(1UL, values->Size());
   ASSERT_EQ("This is a test", values->Get(kv.value));
   ASSERT_THROW(values->Get(2), std::out_of_range);
 
@@ -26,4 +26,17 @@ TEST(StoreTests, Memory) {
   keys->Set(root);
   ASSERT_EQ(root, keys->Get(root->Id()));
   ASSERT_TRUE(keys->Has(root->Id()));
+}
+
+TEST(StoreTests, File) {
+  Key<256> first;
+  Key<256> last;
+  FromHex(first, h0);
+  FromHex(last, h2);
+
+  auto key = first + 1;
+  auto values = MakeFileValueStore<256>("test", 4096, 8192);
+  auto kv = values->Set(key, "This is a test");
+  ASSERT_EQ("This is a test", values->Get(kv.value));
+  ASSERT_THROW(values->Get(2), std::out_of_range);
 }

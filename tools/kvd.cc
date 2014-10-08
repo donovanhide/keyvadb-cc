@@ -29,6 +29,10 @@ int main() {
   auto values = MakeMemoryValueStore<256>();
   auto keys = MakeMemoryKeyStore<256>(85);
   DB<256> db(keys, values);
+  if (auto err = db.Open()) {
+    std::cerr << err << std::endl;
+    return 1;
+  }
   std::vector<std::string> inserted;
   std::ios_base::sync_with_stdio(false);
   std::array<char, 1048576> str;
@@ -51,6 +55,9 @@ int main() {
   auto finish = high_resolution_clock::now();
   auto dur = duration_cast<nanoseconds>(finish - start);
   std::cout << dur.count() / inserted.size() << " ns/key" << std::endl;
-  db.Close();
+  if (auto err = db.Close()) {
+    std::cerr << err << std::endl;
+    return 1;
+  }
   return 0;
 }
