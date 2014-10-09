@@ -43,7 +43,7 @@ class KeyStore {
   virtual node_ptr Get(std::uint64_t const id) = 0;
   virtual bool Has(std::uint64_t const id) = 0;
   virtual void Set(node_ptr const& node) = 0;
-  virtual std::size_t Size() const = 0;
+  virtual std::uint64_t Size() const = 0;
 };
 
 }  // namespace keyvadb

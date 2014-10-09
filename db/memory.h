@@ -70,7 +70,7 @@ class MemoryKeyStore : public KeyStore<BITS> {
   };
   node_ptr Get(std::uint64_t const id) override { return map_.at(id); }
   void Set(node_ptr const& node) override { map_[node->Id()] = node; }
-  std::size_t Size() const override { return id_; }
+  std::uint64_t Size() const override { return id_; }
 };
 
 template <std::uint32_t BITS>

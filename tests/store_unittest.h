@@ -38,7 +38,7 @@ TEST(StoreTests, File) {
   FromHex(first, h0);
   FromHex(last, h2);
 
-  auto values = MakeFileValueStore<256>("test", 4096, 8192);
+  auto values = MakeFileValueStore<256>("test");
   ASSERT_FALSE(values->Open());
   ASSERT_FALSE(values->Clear());
   KeyValue<256> kv;

@@ -7,7 +7,7 @@ GTEST_H = $(TEST_DIR)/gtest/gtest.h
 GTEST_ALL_C = $(TEST_DIR)/gtest/gtest-all.cc
 GTEST_MAIN_CC = $(TEST_DIR)/gtest/gtest_main.cc
 
-cxxflags.debug := -g -O1 
+cxxflags.debug := -g -O0
 cxxflags.release := -g -O3 -DNDEBUG
 
 CPPFLAGS += -I$(TEST_DIR) -I.  -isystem $(TEST_DIR)/gtest
