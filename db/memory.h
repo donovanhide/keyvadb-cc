@@ -4,6 +4,7 @@
 #include <system_error>
 #include <atomic>
 #include <unordered_map>
+#include <utility>
 #include "db/store.h"
 
 namespace keyvadb {
@@ -48,6 +49,7 @@ class MemoryKeyStore : public KeyStore<BITS> {
  public:
   using node_type = Node<BITS>;
   using node_ptr = std::shared_ptr<node_type>;
+  using node_result = std::pair<node_ptr, std::error_code>;
   using key_type = Key<BITS>;
 
  private:
@@ -61,15 +63,24 @@ class MemoryKeyStore : public KeyStore<BITS> {
 
   std::error_code Open() override { return std::error_code(); }
   std::error_code Close() override { return std::error_code(); }
+  std::error_code Clear() override {
+    map_.clear();
+    return std::error_code();
+  }
 
   node_ptr New(const key_type& first, const key_type& last) override {
     return std::make_shared<node_type>(id_++, degree_, first, last);
   }
-  bool Has(std::uint64_t const id) override {
+  bool Has(std::uint64_t const id) const override {
     return map_.find(id) != map_.end();
   };
-  node_ptr Get(std::uint64_t const id) override { return map_.at(id); }
-  void Set(node_ptr const& node) override { map_[node->Id()] = node; }
+  node_result Get(std::uint64_t const id) const override {
+    return std::make_pair(map_.at(id), std::error_code());
+  }
+  std::error_code Set(node_ptr const& node) override {
+    map_[node->Id()] = node;
+    return std::error_code();
+  }
   std::uint64_t Size() const override { return id_; }
 };
 

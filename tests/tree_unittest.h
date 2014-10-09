@@ -4,11 +4,35 @@
 
 using namespace keyvadb;
 
+void checkTree(Tree<256> const& tree) {
+  bool sane;
+  std::error_code err;
+  std::tie(sane, err) = tree.IsSane();
+  ASSERT_FALSE(err);
+  ASSERT_TRUE(sane);
+}
+
+void checkCount(Tree<256> const& tree, std::size_t const expected) {
+  std::size_t count;
+  std::error_code err;
+  std::tie(count, err) = tree.NonSyntheticKeyCount();
+  ASSERT_FALSE(err);
+  ASSERT_EQ(expected, count);
+}
+
+void checkValue(Tree<256> const& tree, KeyValue<256> const kv) {
+  std::uint64_t value;
+  std::error_code err;
+  std::tie(value, err) = tree.Get(kv.key);
+  ASSERT_FALSE(err);
+  ASSERT_EQ(kv.value, value);
+}
+
 TEST(TreeTests, General) {
   auto mem = MakeMemoryKeyStore<256>(16);
   auto tree = Tree<256>(mem);
   // Check root has been created
-  ASSERT_TRUE(tree.IsSane());
+  checkTree(tree);
   ASSERT_EQ(1UL, mem->Size());
   // Insert some random values
   // twice with same seed to insert duplicates
@@ -20,21 +44,23 @@ TEST(TreeTests, General) {
       // Use j as seed
       buffer->FillRandom(n, j);
       ASSERT_EQ(n, buffer->Size());
-      auto journal = tree.Add(buffer->GetSnapshot());
-      ASSERT_TRUE(tree.IsSane());
+      Tree<256>::journal_ptr journal;
+      std::error_code err;
+      std::tie(journal, err) = tree.Add(buffer->GetSnapshot());
+      ASSERT_FALSE(err);
+      checkTree(tree);
       journal->Commit(mem);
-      ASSERT_TRUE(tree.IsSane());
+      checkTree(tree);
       if (i == 0) {
         ASSERT_GT(journal->Size(), 0UL);
         ASSERT_EQ(n, journal->TotalInsertions());
-        ASSERT_EQ(n * (j + 1), tree.NonSyntheticKeyCount());
+        checkCount(tree, n * (j + 1));
       } else {
         ASSERT_EQ(journal->Size(), 0UL);
         ASSERT_EQ(0UL, journal->TotalInsertions());
       }
       auto snapshot = buffer->GetSnapshot();
-      for (auto const& kv : snapshot->keys)
-        ASSERT_EQ(kv.value, tree.Get(kv.key));
+      for (auto const& kv : snapshot->keys) checkValue(tree, kv);
 
       // std::cout << *journal << "----" << std::endl;
     }

@@ -17,6 +17,7 @@ class DB {
   using value_store_type = std::shared_ptr<ValueStore<BITS>>;
   using key_store_type = std::shared_ptr<KeyStore<BITS>>;
   using buffer_type = std::shared_ptr<Buffer<BITS>>;
+  using journal_type = std::unique_ptr<Journal<BITS>>;
   using tree_type = Tree<BITS>;
 
  private:
@@ -51,7 +52,9 @@ class DB {
     try {
       valueId = buffer_->Get(k);
     } catch (std::out_of_range) {
-      valueId = tree_.Get(k);
+      std::error_code err;
+      std::tie(valueId, err) = tree_.Get(k);
+      if (err) return err;
     }
     return values_->Get(valueId, value);
   }
@@ -72,14 +75,18 @@ class DB {
   }
 
  private:
-  void flush() {
+  std::error_code flush() {
     auto snapshot = buffer_->GetSnapshot();
     std::cout << "Flushing " << snapshot->Size() << " keys" << std::endl;
-    auto journal = tree_.Add(snapshot);
+    journal_type journal;
+    std::error_code err;
+    std::tie(journal, err) = tree_.Add(snapshot);
+    if (err) return err;
     journal->Commit(keys_);
     buffer_->ClearSnapshot(snapshot);
     std::cout << "Flushed " << snapshot->Size() << " keys into "
               << journal->Size() << " nodes" << std::endl;
+    return std::error_code();
   }
 
   void flushThread() {
@@ -87,7 +94,7 @@ class DB {
     for (;;) {
       bool stop = cond_.wait_for(lock, std::chrono::seconds(1),
                                  [&]() { return close_; });
-      flush();
+      if (auto err = flush()) std::cerr << err << std::endl;
       if (stop) break;
     }
     // thread exits

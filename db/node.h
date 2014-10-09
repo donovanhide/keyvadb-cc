@@ -3,9 +3,11 @@
 #include <cstdint>
 #include <cstddef>
 #include <vector>
+#include <string>
+#include <system_error>
 #include <algorithm>
-#include <limits>
 #include "db/key.h"
+#include "db/encoding.h"
 #include "db/snapshot.h"
 #include "db/journal.h"
 
@@ -26,8 +28,9 @@ class Node {
   using key_value_type = KeyValue<BITS>;
   using key_values_type = std::vector<key_value_type>;
   using children_type = std::vector<std::uint64_t>;
-  using child_func = std::function<void(const std::size_t, const key_type&,
-                                        const key_type&, const std::uint64_t)>;
+  using child_func =
+      std::function<std::error_code(const std::size_t, const key_type&,
+                                    const key_type&, const std::uint64_t)>;
   using snapshot_ptr = std::unique_ptr<Snapshot<BITS>>;
   using node_ptr = std::shared_ptr<Node<BITS>>;
   using iterator = typename key_values_type::iterator;
@@ -56,6 +59,33 @@ class Node {
                               " " + ToHex(last));
   }
 
+  std::size_t Write(std::string& str) const {
+    size_t pos = 0;
+    pos += WriteBytes(first_, pos, str);
+    pos += WriteBytes(last_, pos, str);
+    for (auto const& kv : keys) {
+      pos += WriteBytes(kv.key, pos, str);
+      pos += string_replace<std::uint64_t>(kv.value, pos, str);
+    }
+    for (auto const& cid : children_)
+      pos += string_replace<std::uint64_t>(cid, pos, str);
+    return pos;
+  }
+
+  std::size_t Read(std::string const& str) {
+    size_t pos = 0;
+    size_t length = MaxSize<BITS>();
+    pos += ReadBytes(str, pos, length, first_);
+    pos += ReadBytes(str, pos, length, last_);
+    for (auto& kv : keys) {
+      pos += ReadBytes(str, pos, length, kv.key);
+      pos += string_read<std::uint64_t>(str, pos, kv.value);
+    }
+    for (auto& cid : children_)
+      pos += string_read<std::uint64_t>(str, pos, cid);
+    return pos;
+  }
+
   std::uint64_t AddSyntheticKeyValues() {
     auto const stride = Stride();
     auto cursor = first_ + stride;
@@ -82,19 +112,21 @@ class Node {
     return children_.at(i);
   }
 
-  void EachChild(child_func f) const {
+  std::error_code EachChild(child_func f) const {
     auto length = Degree();
     for (std::size_t i = 0; i < length; i++) {
       if (i == 0) {
-        if (!keys.at(i).IsZero()) f(i, first_, keys.at(i).key, children_.at(i));
+        if (!keys.at(i).IsZero())
+          return f(i, first_, keys.at(i).key, children_.at(i));
       } else if (i == length - 1) {
         if (!keys.at(i - 1).IsZero())
-          f(i, keys.at(i - 1).key, last_, children_.at(i));
+          return f(i, keys.at(i - 1).key, last_, children_.at(i));
       } else {
         if (!keys.at(i - 1).IsZero() && !keys.at(i).IsZero())
-          f(i, keys.at(i - 1).key, keys.at(i).key, children_.at(i));
+          return f(i, keys.at(i - 1).key, keys.at(i).key, children_.at(i));
       }
     }
+    return std::error_code();
   }
   constexpr std::uint64_t Find(key_type const& key) const {
     auto found = std::find_if(

@@ -56,6 +56,24 @@ extern Key<BITS> FromBytes(std::string const& str) {
 }
 
 template <std::uint32_t BITS>
+extern std::size_t WriteBytes(Key<BITS> const& key, const std::size_t pos,
+                              std::string& str) {
+  auto bytes = key.backend().limbs();
+  auto length = key.backend().size() * sizeof(*key.backend().limbs());
+  std::memcpy(&str[pos], &bytes, length);
+  return length;
+}
+
+template <std::uint32_t BITS>
+extern std::size_t ReadBytes(std::string const& str, const std::size_t pos,
+                             const std::size_t length, Key<BITS>& key) {
+  key.backend().resize(length, length);
+  auto bytes = key.backend().limbs();
+  std::memcpy(bytes, &str[pos], length);
+  return length;
+}
+
+template <std::uint32_t BITS>
 extern void FromHex(Key<BITS>& key, std::string const& s) {
   key = Key<BITS>("0x" + s);
 }
