@@ -16,3 +16,5 @@ keyvadb_unittests
 kvd
 
 test
+
+test.keys

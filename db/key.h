@@ -67,7 +67,8 @@ extern std::size_t WriteBytes(Key<BITS> const& key, const std::size_t pos,
 template <std::uint32_t BITS>
 extern std::size_t ReadBytes(std::string const& str, const std::size_t pos,
                              const std::size_t length, Key<BITS>& key) {
-  key.backend().resize(length, length);
+  auto limbLength = length / sizeof(*key.backend().limbs());
+  key.backend().resize(limbLength, limbLength);
   auto bytes = key.backend().limbs();
   std::memcpy(bytes, &str[pos], length);
   return length;

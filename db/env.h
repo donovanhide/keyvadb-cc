@@ -17,10 +17,10 @@ class RandomAccessFile {
   virtual std::error_condition Open() = 0;
   virtual std::error_condition OpenSync() = 0;
   virtual std::error_condition Truncate() const = 0;
-  virtual std::error_condition ReadAt(std::uint64_t const pos,
-                                      std::string& str) const = 0;
-  virtual std::error_condition WriteAt(std::string const& str,
-                                       std::uint64_t const pos) = 0;
+  virtual std::pair<std::size_t, std::error_condition> ReadAt(
+      std::uint64_t const pos, std::string& str) const = 0;
+  virtual std::pair<std::size_t, std::error_condition> WriteAt(
+      std::string const& str, std::uint64_t const pos) = 0;
   virtual std::error_condition Size(std::atomic_uint_fast64_t& size) const = 0;
   virtual std::error_condition Close() = 0;
   virtual std::error_condition Sync() const = 0;
@@ -47,14 +47,18 @@ class PosixRandomAccessFile : public RandomAccessFile {
     return check_error(::ftruncate(fd_, 0));
   }
 
-  std::error_condition ReadAt(std::uint64_t const pos,
-                              std::string& str) const override {
-    return check_error(::pread(fd_, &str[0], str.size(), pos));
+  std::pair<std::size_t, std::error_condition> ReadAt(
+      std::uint64_t const pos, std::string& str) const override {
+    ssize_t ret = ::pread(fd_, &str[0], str.size(), pos);
+    if (ret < 0) return std::make_pair(0, check_error(ret));
+    return std::make_pair(ret, std::error_condition());
   };
 
-  std::error_condition WriteAt(std::string const& str,
-                               std::uint64_t const pos) override {
-    return check_error(::pwrite(fd_, str.data(), str.size(), pos));
+  std::pair<std::size_t, std::error_condition> WriteAt(
+      std::string const& str, std::uint64_t const pos) override {
+    ssize_t ret = ::pwrite(fd_, str.data(), str.size(), pos);
+    if (ret < 0) return std::make_pair(0, check_error(ret));
+    return std::make_pair(ret, std::error_condition());
   };
 
   std::error_condition Size(std::atomic_uint_fast64_t& size) const override {

@@ -41,13 +41,24 @@ class FileValueStore : public ValueStore<BITS> {
     std::string str;
     // Optmistically read a block
     str.resize(4096);
-    if (auto err = file_->ReadAt(id, str)) return err;
+    std::size_t bytesRead;
+    std::error_condition err;
+    std::tie(bytesRead, err) = file_->ReadAt(id, str);
+    if (err) return err;
+    if (bytesRead == 0) return make_error_condition(db_error::value_not_found);
+    if (bytesRead != str.length())
+      return make_error_condition(db_error::short_read);
     std::uint64_t length = 0;
     string_read<std::uint64_t>(str, 0, length);
     str.resize(length);
     if (length > 4096) {
       // Get the actual length
-      if (auto err = file_->ReadAt(id, str)) return err;
+      std::tie(bytesRead, err) = file_->ReadAt(id, str);
+      if (err) return err;
+      if (bytesRead == 0)
+        return make_error_condition(db_error::value_not_found);
+      if (bytesRead != str.length())
+        return make_error_condition(db_error::short_read);
     }
     value->assign(str, value_offset_, std::string::npos);
     return std::error_condition();
@@ -64,7 +75,13 @@ class FileValueStore : public ValueStore<BITS> {
     str.replace(pos, value.size(), value);
     size_ += length;
     kv = {FromBytes<BITS>(key), size_ - length};
-    return file_->WriteAt(str, kv.value);
+    std::size_t bytesWritten;
+    std::error_condition err;
+    std::tie(bytesWritten, err) = file_->WriteAt(str, kv.value);
+    if (err) return err;
+    if (bytesWritten != length)
+      return make_error_condition(db_error::short_write);
+    return std::error_condition();
   };
 };
 
@@ -123,9 +140,17 @@ class FileKeyStore : public KeyStore<BITS> {
     std::string str;
     str.resize(block_size_);
     auto node = std::make_shared<node_type>(size_ - block_size_, degree_, 0, 1);
-    if (auto err = file_->ReadAt(id, str)) return std::make_pair(node, err);
+    std::size_t bytesRead;
+    std::error_condition err;
+    std::tie(bytesRead, err) = file_->ReadAt(id, str);
+    if (err) return std::make_pair(node_ptr(), err);
+    if (bytesRead == 0)
+      return std::make_pair(node_ptr(),
+                            make_error_condition(db_error::key_not_found));
+    if (bytesRead != block_size_)
+      return std::make_pair(node_ptr(),
+                            make_error_condition(db_error::short_read));
     node->Read(str);
-    if (!node) throw std::out_of_range("Not found");
     return std::make_pair(node, std::error_condition());
   }
 
@@ -133,7 +158,13 @@ class FileKeyStore : public KeyStore<BITS> {
     std::string str;
     str.resize(block_size_);
     node->Write(str);
-    return file_->WriteAt(str, node->Id());
+    std::size_t bytesWritten;
+    std::error_condition err;
+    std::tie(bytesWritten, err) = file_->WriteAt(str, node->Id());
+    if (err) return err;
+    if (bytesWritten != block_size_)
+      return make_error_condition(db_error::short_write);
+    return std::error_condition();
   }
 
   std::uint64_t Size() const { return size_; }

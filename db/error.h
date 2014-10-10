@@ -4,7 +4,7 @@
 #include <system_error>
 
 namespace keyvadb {
-enum db_error { key_not_found = 1, value_not_found };
+enum db_error { key_not_found = 1, value_not_found, short_read, short_write };
 
 class db_category : public std::error_category {
  public:
@@ -15,6 +15,10 @@ class db_category : public std::error_category {
         return "Key not found";
       case db_error::value_not_found:
         return "Value not found";
+      case db_error::short_read:
+        return "Short Read";
+      case db_error::short_write:
+        return "Short Write";
       default:
         return "Unknown error";
     }

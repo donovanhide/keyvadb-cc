@@ -29,9 +29,14 @@ class MemoryValueStore : public ValueStore<BITS> {
   }
   std::error_condition Get(std::uint64_t const id,
                            std::string* str) const override {
-    str->assign(map_.at(id));
+    try {
+      str->assign(map_.at(id));
+    } catch (std::out_of_range const&) {
+      return make_error_condition(db_error::value_not_found);
+    }
     return std::error_condition();
   }
+
   std::error_condition Set(std::string const& key, std::string const& value,
                            key_value_type& kv) override {
     kv = {FromBytes<BITS>(key), id_++};
@@ -74,7 +79,13 @@ class MemoryKeyStore : public KeyStore<BITS> {
   }
 
   node_result Get(std::uint64_t const id) const override {
-    return std::make_pair(map_.at(id), std::error_condition());
+    try {
+      auto node = map_.at(id);
+      return std::make_pair(node, std::error_condition());
+    } catch (std::out_of_range const&) {
+      return std::make_pair(node_ptr(),
+                            make_error_condition(db_error::key_not_found));
+    }
   }
 
   std::error_condition Set(node_ptr const& node) override {

@@ -34,6 +34,11 @@ class KeyStoreTest : public ::testing::Test {
     }
   }
   virtual ~KeyStoreTest() {}
+  virtual void SetUp() {
+    ASSERT_FALSE(keys_->Open());
+    ASSERT_FALSE(keys_->Clear());
+  }
+  virtual void TearDown() { ASSERT_FALSE(keys_->Close()); }
 };
 template <typename T>
 const std::uint32_t KeyStoreTest<T>::bits;
@@ -49,13 +54,15 @@ TYPED_TEST_P(KeyStoreTest, SetAndGet) {
   ASSERT_EQ(0UL, root->Id());
   ASSERT_EQ(first, root->First());
   ASSERT_EQ(last, root->Last());
-  ASSERT_THROW(this->keys_->Get(root->Id()), std::out_of_range);
-  ASSERT_FALSE(this->keys_->Set(root));
   std::error_condition err;
   Tree<256>::node_ptr node;
-  std::tie(root, err) = this->keys_->Get(root->Id());
+  std::tie(node, err) = this->keys_->Get(root->Id());
+  ASSERT_EQ(db_error::key_not_found, err.value());
+  ASSERT_EQ(nullptr, node);
+  ASSERT_FALSE(this->keys_->Set(root));
+  std::tie(node, err) = this->keys_->Get(root->Id());
   ASSERT_FALSE(err);
-  ASSERT_EQ(root, node);
+  ASSERT_EQ(root->Last(), node->Last());
 }
 
 REGISTER_TYPED_TEST_CASE_P(KeyStoreTest, SetAndGet);
@@ -80,19 +87,6 @@ TEST(StoreTests, Memory) {
   Key<256> last;
   FromHex(first, h0);
   FromHex(last, h2);
-
-  // auto keys = MakeMemoryKeyStore<256>(16);
-  // auto root = keys->New(first, last);
-  // ASSERT_EQ(0UL, root->Id());
-  // ASSERT_EQ(first, root->First());
-  // ASSERT_EQ(last, root->Last());
-  // Node<256> node;
-  // ASSERT_THROW(keys->Get(root->Id(), node), std::out_of_range);
-  // ASSERT_FALSE(keys->Has(root->Id(), node));
-  // ASSERT_FALSE(keys->Set(root));
-  // ASSERT_FALSE(keys->Get(root->Id(), node))
-  // ASSERT_EQ(root, node);
-  // ASSERT_TRUE(keys->Has(root->Id()));
 }
 
 TEST(StoreTests, File) {
