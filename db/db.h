@@ -41,32 +41,32 @@ class DB {
   DB(DB const&) = delete;
   DB& operator=(const DB&) = delete;
 
-  std::error_code Open() {
+  std::error_condition Open() {
     if (auto err = keys_->Open()) return err;
     return values_->Open();
   }
 
-  std::error_code Get(std::string const& key, std::string* value) {
+  std::error_condition Get(std::string const& key, std::string* value) {
     auto k = FromBytes<BITS>(key);
     std::uint64_t valueId;
     try {
       valueId = buffer_->Get(k);
     } catch (std::out_of_range) {
-      std::error_code err;
+      std::error_condition err;
       std::tie(valueId, err) = tree_.Get(k);
       if (err) return err;
     }
     return values_->Get(valueId, value);
   }
 
-  std::error_code Put(std::string const& key, std::string const& value) {
+  std::error_condition Put(std::string const& key, std::string const& value) {
     key_value_type kv;
     if (auto err = values_->Set(key, value, kv)) return err;
     buffer_->Add(kv.key, kv.value);
-    return std::error_code();
+    return std::error_condition();
   }
 
-  std::error_code Close() {
+  std::error_condition Close() {
     close_ = true;
     cond_.notify_all();
     thread_.join();
@@ -75,18 +75,18 @@ class DB {
   }
 
  private:
-  std::error_code flush() {
+  std::error_condition flush() {
     auto snapshot = buffer_->GetSnapshot();
     std::cout << "Flushing " << snapshot->Size() << " keys" << std::endl;
     journal_type journal;
-    std::error_code err;
+    std::error_condition err;
     std::tie(journal, err) = tree_.Add(snapshot);
     if (err) return err;
     journal->Commit(keys_);
     buffer_->ClearSnapshot(snapshot);
     std::cout << "Flushed " << snapshot->Size() << " keys into "
               << journal->Size() << " nodes" << std::endl;
-    return std::error_code();
+    return std::error_condition();
   }
 
   void flushThread() {
@@ -94,7 +94,8 @@ class DB {
     for (;;) {
       bool stop = cond_.wait_for(lock, std::chrono::seconds(1),
                                  [&]() { return close_; });
-      if (auto err = flush()) std::cerr << err << std::endl;
+      if (auto err = flush())
+        std::cerr << err.message() << ":" << err.category().name() << std::endl;
       if (stop) break;
     }
     // thread exits

@@ -27,17 +27,17 @@ class FileValueStore : public ValueStore<BITS> {
   FileValueStore(const FileValueStore&) = delete;
   FileValueStore& operator=(const FileValueStore&) = delete;
 
-  std::error_code Open() override {
+  std::error_condition Open() override {
     if (auto err = file_->OpenSync()) return err;
     return file_->Size(size_);
   }
-  std::error_code Clear() override {
+  std::error_condition Clear() override {
     size_ = 0;
     return file_->Truncate();
   }
-  std::error_code Close() override { return file_->Close(); }
-  std::error_code Get(std::uint64_t const id,
-                      std::string* value) const override {
+  std::error_condition Close() override { return file_->Close(); }
+  std::error_condition Get(std::uint64_t const id,
+                           std::string* value) const override {
     std::string str;
     // Optmistically read a block
     str.resize(4096);
@@ -50,10 +50,10 @@ class FileValueStore : public ValueStore<BITS> {
       if (auto err = file_->ReadAt(id, str)) return err;
     }
     value->assign(str, value_offset_, std::string::npos);
-    return std::error_code();
+    return std::error_condition();
   }
-  std::error_code Set(std::string const& key, std::string const& value,
-                      key_value_type& kv) override {
+  std::error_condition Set(std::string const& key, std::string const& value,
+                           key_value_type& kv) override {
     auto length = value_offset_ + value.size();
     std::string str;
     str.resize(length);
@@ -83,7 +83,7 @@ class FileKeyStore : public KeyStore<BITS> {
   using key_type = Key<BITS>;
   using node_type = Node<BITS>;
   using node_ptr = std::shared_ptr<node_type>;
-  using node_result = std::pair<node_ptr, std::error_code>;
+  using node_result = std::pair<node_ptr, std::error_condition>;
   using file_type = std::unique_ptr<RandomAccessFile>;
 
  private:
@@ -102,17 +102,17 @@ class FileKeyStore : public KeyStore<BITS> {
   FileKeyStore(const FileKeyStore&) = delete;
   FileKeyStore& operator=(const FileKeyStore&) = delete;
 
-  std::error_code Open() override {
+  std::error_condition Open() override {
     if (auto err = file_->Open()) return err;
     return file_->Size(size_);
   }
 
-  std::error_code Clear() override {
+  std::error_condition Clear() override {
     size_ = 0;
     return file_->Truncate();
   }
 
-  std::error_code Close() override { return file_->Close(); }
+  std::error_condition Close() override { return file_->Close(); }
   node_ptr New(const key_type& first, const key_type& last) override {
     size_ += block_size_;
     return std::make_shared<node_type>(size_ - block_size_, degree_, first,
@@ -126,10 +126,10 @@ class FileKeyStore : public KeyStore<BITS> {
     if (auto err = file_->ReadAt(id, str)) return std::make_pair(node, err);
     node->Read(str);
     if (!node) throw std::out_of_range("Not found");
-    return std::make_pair(node, std::error_code());
+    return std::make_pair(node, std::error_condition());
   }
 
-  std::error_code Set(node_ptr const& node) {
+  std::error_condition Set(node_ptr const& node) {
     std::string str;
     str.resize(block_size_);
     node->Write(str);

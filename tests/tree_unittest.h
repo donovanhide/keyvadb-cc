@@ -6,7 +6,7 @@ using namespace keyvadb;
 
 void checkTree(Tree<256> const& tree) {
   bool sane;
-  std::error_code err;
+  std::error_condition err;
   std::tie(sane, err) = tree.IsSane();
   ASSERT_FALSE(err);
   ASSERT_TRUE(sane);
@@ -14,7 +14,7 @@ void checkTree(Tree<256> const& tree) {
 
 void checkCount(Tree<256> const& tree, std::size_t const expected) {
   std::size_t count;
-  std::error_code err;
+  std::error_condition err;
   std::tie(count, err) = tree.NonSyntheticKeyCount();
   ASSERT_FALSE(err);
   ASSERT_EQ(expected, count);
@@ -22,7 +22,7 @@ void checkCount(Tree<256> const& tree, std::size_t const expected) {
 
 void checkValue(Tree<256> const& tree, KeyValue<256> const kv) {
   std::uint64_t value;
-  std::error_code err;
+  std::error_condition err;
   std::tie(value, err) = tree.Get(kv.key);
   ASSERT_FALSE(err);
   ASSERT_EQ(kv.value, value);
@@ -46,7 +46,7 @@ TEST(TreeTests, General) {
       buffer->FillRandom(n, j);
       ASSERT_EQ(n, buffer->Size());
       Tree<256>::journal_ptr journal;
-      std::error_code err;
+      std::error_condition err;
       std::tie(journal, err) = tree.Add(buffer->GetSnapshot());
       ASSERT_FALSE(err);
       checkTree(tree);

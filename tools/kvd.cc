@@ -30,7 +30,7 @@ int main() {
   auto keys = MakeMemoryKeyStore<256>(85);
   DB<256> db(keys, values);
   if (auto err = db.Open()) {
-    std::cerr << err << std::endl;
+    std::cerr << err.message() << std::endl;
     return 1;
   }
   std::vector<std::string> inserted;
@@ -46,7 +46,7 @@ int main() {
       auto key = unhex(line.substr(0, 64));
       auto value = unhex(line.substr(65, std::string::npos));
       if (auto err = db.Put(key, value)) {
-        std::cerr << err << std::endl;
+        std::cerr << err.message() << std::endl;
       }
       inserted.push_back(key);
     });
@@ -55,12 +55,12 @@ int main() {
   auto start = high_resolution_clock::now();
   std::string value;
   for (auto const& key : inserted)
-    if (auto err = db.Get(key, &value)) std::cerr << err << std::endl;
+    if (auto err = db.Get(key, &value)) std::cerr << err.message() << std::endl;
   auto finish = high_resolution_clock::now();
   auto dur = duration_cast<nanoseconds>(finish - start);
   std::cout << dur.count() / inserted.size() << " ns/key" << std::endl;
   if (auto err = db.Close()) {
-    std::cerr << err << std::endl;
+    std::cerr << err.message() << std::endl;
     return 1;
   }
   return 0;

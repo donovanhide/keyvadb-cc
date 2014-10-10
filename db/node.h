@@ -29,8 +29,8 @@ class Node {
   using key_values_type = std::vector<key_value_type>;
   using children_type = std::vector<std::uint64_t>;
   using child_func =
-      std::function<std::error_code(const std::size_t, const key_type&,
-                                    const key_type&, const std::uint64_t)>;
+      std::function<std::error_condition(const std::size_t, const key_type&,
+                                         const key_type&, const std::uint64_t)>;
   using snapshot_ptr = std::unique_ptr<Snapshot<BITS>>;
   using node_ptr = std::shared_ptr<Node<BITS>>;
   using iterator = typename key_values_type::iterator;
@@ -112,9 +112,9 @@ class Node {
     return children_.at(i);
   }
 
-  std::error_code EachChild(child_func f) const {
+  std::error_condition EachChild(child_func f) const {
     auto length = Degree();
-    std::error_code err;
+    std::error_condition err;
     for (std::size_t i = 0; i < length; i++) {
       if (i == 0) {
         if (!keys.at(i).IsZero())

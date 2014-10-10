@@ -8,6 +8,4 @@ TEST(ErrorTests, General) {
   ASSERT_EQ("Key not found", err.message());
   auto err2 = std::generic_category().default_error_condition(1);
   ASSERT_EQ("Operation not permitted", err2.message());
-  std::cout << err.category().name() << " " << err2.category().name()
-            << std::endl;
 }
