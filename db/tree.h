@@ -55,26 +55,6 @@ class Tree {
     return get(rootId, key);
   }
 
-  std::pair<std::uint64_t, std::error_code> get(std::uint64_t const id,
-                                                key_type const& key) const {
-    node_ptr node;
-    std::error_code err;
-    std::tie(node, err) = store_->Get(id);
-    if (err) return std::make_pair(EmptyValue, err);
-    auto value = node->Find(key);
-    if (value != EmptyValue) return std::make_pair(value, err);
-    // TODO(DH) Check shadowing...
-    err = node->EachChild([&](const std::size_t, const key_type& first,
-                              const key_type& last, const std::uint64_t cid) {
-      if (key > first && key < last) {
-        std::tie(value, err) = get(cid, key);
-        if (err) return err;
-      }
-      return std::error_code();
-    });
-    return std::make_pair(value, err);
-  }
-
   std::pair<bool, std::error_code> IsSane() const {
     bool sane = true;
     auto err = Walk([&sane](node_ptr n, std::uint32_t) {
@@ -96,8 +76,9 @@ class Tree {
   friend std::ostream& operator<<(std::ostream& stream, const Tree& tree) {
     auto err = tree.Walk([&stream](node_ptr n, std::uint32_t level) {
       stream << "Level:\t\t" << level << std::endl << *n;
+      return std::error_code();
     });
-    stream << err << std::endl;
+    if (err) stream << err << std::endl;
     return stream;
   }
 
@@ -133,6 +114,26 @@ class Tree {
     delta.CheckSanity();
     if (delta.Dirty()) journal->Add(level, delta);
     return std::error_code();
+  }
+
+  std::pair<std::uint64_t, std::error_code> get(std::uint64_t const id,
+                                                key_type const& key) const {
+    node_ptr node;
+    std::error_code err;
+    std::tie(node, err) = store_->Get(id);
+    if (err) return std::make_pair(EmptyValue, err);
+    auto value = node->Find(key);
+    if (value != EmptyValue) return std::make_pair(value, err);
+    // TODO(DH) Check shadowing...
+    err = node->EachChild([&](const std::size_t, const key_type& first,
+                              const key_type& last, const std::uint64_t cid) {
+      if (key > first && key < last) {
+        std::tie(value, err) = get(cid, key);
+        if (err) return err;
+      }
+      return std::error_code();
+    });
+    return std::make_pair(value, err);
   }
 
   std::error_code walk(std::uint64_t const id, std::uint32_t const level,

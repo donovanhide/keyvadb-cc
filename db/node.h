@@ -117,13 +117,17 @@ class Node {
     for (std::size_t i = 0; i < length; i++) {
       if (i == 0) {
         if (!keys.at(i).IsZero())
-          return f(i, first_, keys.at(i).key, children_.at(i));
+          if (auto err = f(i, first_, keys.at(i).key, children_.at(i)))
+            return err;
       } else if (i == length - 1) {
         if (!keys.at(i - 1).IsZero())
-          return f(i, keys.at(i - 1).key, last_, children_.at(i));
+          if (auto err = f(i, keys.at(i - 1).key, last_, children_.at(i)))
+            return err;
       } else {
         if (!keys.at(i - 1).IsZero() && !keys.at(i).IsZero())
-          return f(i, keys.at(i - 1).key, keys.at(i).key, children_.at(i));
+          if (auto err =
+                  f(i, keys.at(i - 1).key, keys.at(i).key, children_.at(i)))
+            return err;
       }
     }
     return std::error_code();
