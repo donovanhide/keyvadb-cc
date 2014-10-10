@@ -114,23 +114,21 @@ class Node {
 
   std::error_code EachChild(child_func f) const {
     auto length = Degree();
+    std::error_code err;
     for (std::size_t i = 0; i < length; i++) {
       if (i == 0) {
         if (!keys.at(i).IsZero())
-          if (auto err = f(i, first_, keys.at(i).key, children_.at(i)))
-            return err;
+          err = f(i, first_, keys.at(i).key, children_.at(i));
       } else if (i == length - 1) {
         if (!keys.at(i - 1).IsZero())
-          if (auto err = f(i, keys.at(i - 1).key, last_, children_.at(i)))
-            return err;
+          err = f(i, keys.at(i - 1).key, last_, children_.at(i));
       } else {
         if (!keys.at(i - 1).IsZero() && !keys.at(i).IsZero())
-          if (auto err =
-                  f(i, keys.at(i - 1).key, keys.at(i).key, children_.at(i)))
-            return err;
+          err = f(i, keys.at(i - 1).key, keys.at(i).key, children_.at(i));
       }
+      if (err) return err;
     }
-    return std::error_code();
+    return err;
   }
   constexpr std::uint64_t Find(key_type const& key) const {
     auto found = std::find_if(
