@@ -4,6 +4,7 @@
 #include "tests/buffer_unittest.h"
 #include "tests/tree_unittest.h"
 #include "tests/store_unittest.h"
+#include "tests/error_unittest.h"
 // #include "tests/db_unittest.h"
 
 GTEST_API_ int main(int argc, char **argv) {

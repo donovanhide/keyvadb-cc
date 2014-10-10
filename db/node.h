@@ -130,6 +130,7 @@ class Node {
     }
     return err;
   }
+
   constexpr std::uint64_t Find(key_type const& key) const {
     auto found = std::find_if(
         keys.cbegin(), keys.cend(),

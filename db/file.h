@@ -125,6 +125,7 @@ class FileKeyStore : public KeyStore<BITS> {
     auto node = std::make_shared<node_type>(size_ - block_size_, degree_, 0, 1);
     if (auto err = file_->ReadAt(id, str)) return std::make_pair(node, err);
     node->Read(str);
+    if (!node) throw std::out_of_range("Not found");
     return std::make_pair(node, std::error_code());
   }
 
@@ -135,7 +136,6 @@ class FileKeyStore : public KeyStore<BITS> {
     return file_->WriteAt(str, node->Id());
   }
 
-  bool Has(std::uint64_t const id) const { return id < size_; }
   std::uint64_t Size() const { return size_; }
 };
 

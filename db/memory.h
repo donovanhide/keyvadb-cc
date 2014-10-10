@@ -71,16 +71,16 @@ class MemoryKeyStore : public KeyStore<BITS> {
   node_ptr New(const key_type& first, const key_type& last) override {
     return std::make_shared<node_type>(id_++, degree_, first, last);
   }
-  bool Has(std::uint64_t const id) const override {
-    return map_.find(id) != map_.end();
-  };
+
   node_result Get(std::uint64_t const id) const override {
     return std::make_pair(map_.at(id), std::error_code());
   }
+
   std::error_code Set(node_ptr const& node) override {
     map_[node->Id()] = node;
     return std::error_code();
   }
+
   std::uint64_t Size() const override { return id_; }
 };
 

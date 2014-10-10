@@ -28,12 +28,17 @@ class Tree {
   store_ptr store_;
 
  public:
-  explicit Tree(store_ptr const& store) : store_(store) {
-    if (!store_->Has(rootId)) {
-      auto root = store_->New(firstRootKey(), lastRootKey());
-      // root->AddSyntheticKeyValues();
-      store_->Set(root);
-    }
+  explicit Tree(store_ptr const& store) : store_(store) {}
+
+  // Build root node if not already present
+  std::error_code Init(bool const addSynthetics) {
+    node_ptr root;
+    std::error_code err;
+    std::tie(root, err) = store_->Get(rootId);
+    if (!err) return err;
+    root = store_->New(firstRootKey(), lastRootKey());
+    if (addSynthetics) root->AddSyntheticKeyValues();
+    return store_->Set(root);
   }
 
   std::error_code Walk(node_func f) const { return walk(rootId, 0, f); }
@@ -138,12 +143,13 @@ class Tree {
 
   std::error_code walk(std::uint64_t const id, std::uint32_t const level,
                        node_func f) const {
-    auto result = store_->Get(id);
-    if (result.second) return result.second;
-    if (auto err = f(result.first, level)) return err;
-    return result.first->EachChild([&](const std::size_t, const key_type&,
-                                       const key_type&,
-                                       const std::uint64_t cid) {
+    node_ptr node;
+    std::error_code err;
+    std::tie(node, err) = store_->Get(id);
+    if (err) return err;
+    if (auto err = f(node, level)) return err;
+    return node->EachChild([&](const std::size_t, const key_type&,
+                               const key_type&, const std::uint64_t cid) {
       if (cid != EmptyChild)
         if (auto err = walk(cid, level + 1, f)) return err;
       return std::error_code();

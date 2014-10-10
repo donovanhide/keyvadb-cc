@@ -50,11 +50,12 @@ TYPED_TEST_P(KeyStoreTest, SetAndGet) {
   ASSERT_EQ(first, root->First());
   ASSERT_EQ(last, root->Last());
   ASSERT_THROW(this->keys_->Get(root->Id()), std::out_of_range);
-  ASSERT_FALSE(this->keys_->Has(root->Id()));
   ASSERT_FALSE(this->keys_->Set(root));
-  ASSERT_TRUE(this->keys_->Has(root->Id()));
-  // ASSERT_FALSE(this->keys_->Get(root->Id(), node))
-  // ASSERT_EQ(root, node);
+  std::error_code err;
+  Tree<256>::node_ptr node;
+  std::tie(root, err) = this->keys_->Get(root->Id());
+  ASSERT_FALSE(err);
+  ASSERT_EQ(root, node);
 }
 
 REGISTER_TYPED_TEST_CASE_P(KeyStoreTest, SetAndGet);

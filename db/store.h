@@ -6,6 +6,7 @@
 #include <utility>
 #include <system_error>
 #include "db/key.h"
+#include "db/error.h"
 
 namespace keyvadb {
 
@@ -47,7 +48,6 @@ class KeyStore {
   virtual node_ptr New(key_type const& start, const key_type& end) = 0;
   virtual node_result Get(std::uint64_t const id) const = 0;
   virtual std::error_code Set(node_ptr const& node) = 0;
-  virtual bool Has(std::uint64_t const id) const = 0;
   virtual std::uint64_t Size() const = 0;
 };
 
