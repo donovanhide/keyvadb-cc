@@ -9,5 +9,6 @@ TEST(ErrorTests, General) {
   auto err1 = std::generic_category().default_error_condition(1);
   ASSERT_EQ("Operation not permitted", err1.message());
   auto err6 = std::generic_category().default_error_condition(6);
-  ASSERT_EQ("Device not configured", err6.message());
+  ASSERT_TRUE("Device not configured" == err6.message() ||
+              "No such device or address" == err6.message());
 }
