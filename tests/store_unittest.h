@@ -62,7 +62,7 @@ TYPED_TEST_P(KeyStoreTest, SetAndGet) {
   ASSERT_FALSE(this->keys_->Set(root));
   std::tie(node, err) = this->keys_->Get(root->Id());
   ASSERT_FALSE(err);
-  ASSERT_EQ(root->Last(), node->Last());
+  ASSERT_EQ(ToHex(root->Last()), ToHex(node->Last()));
 }
 
 REGISTER_TYPED_TEST_CASE_P(KeyStoreTest, SetAndGet);

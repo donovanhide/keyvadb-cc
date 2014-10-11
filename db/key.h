@@ -57,10 +57,12 @@ extern Key<BITS> FromBytes(std::string const& str) {
 
 template <std::uint32_t BITS>
 extern std::size_t WriteBytes(Key<BITS> const& key, const std::size_t pos,
-                              std::string& str) {
+                              const std::size_t length, std::string& str) {
   auto bytes = key.backend().limbs();
-  auto length = key.backend().size() * sizeof(*key.backend().limbs());
-  std::memcpy(&str[pos], &bytes, length);
+  auto limbLength = key.backend().size() * sizeof(*key.backend().limbs());
+  // Copy limbs into rightmost position, probably not portable
+  auto offset = length - limbLength;
+  std::memcpy(&str[pos + offset], bytes, length - offset);
   return length;
 }
 
@@ -68,6 +70,7 @@ template <std::uint32_t BITS>
 extern std::size_t ReadBytes(std::string const& str, const std::size_t pos,
                              const std::size_t length, Key<BITS>& key) {
   auto limbLength = length / sizeof(*key.backend().limbs());
+  // Make sure we have enough limbs for largest possible value
   key.backend().resize(limbLength, limbLength);
   auto bytes = key.backend().limbs();
   std::memcpy(bytes, &str[pos], length);

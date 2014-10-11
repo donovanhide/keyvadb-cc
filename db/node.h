@@ -61,10 +61,11 @@ class Node {
 
   std::size_t Write(std::string& str) const {
     size_t pos = 0;
-    pos += WriteBytes(first_, pos, str);
-    pos += WriteBytes(last_, pos, str);
+    size_t length = MaxSize<BITS>();
+    pos += WriteBytes(first_, pos, length, str);
+    pos += WriteBytes(last_, pos, length, str);
     for (auto const& kv : keys) {
-      pos += WriteBytes(kv.key, pos, str);
+      pos += WriteBytes(kv.key, pos, length, str);
       pos += string_replace<std::uint64_t>(kv.value, pos, str);
     }
     for (auto const& cid : children_)
