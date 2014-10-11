@@ -81,7 +81,7 @@ TEST(StoreTests, Memory) {
   std::string value;
   ASSERT_FALSE(values->Get(kv.value, &value));
   ASSERT_EQ("This is a test value", value);
-  ASSERT_THROW(values->Get(2, &value), std::out_of_range);
+  ASSERT_EQ(values->Get(2, &value), db_error::value_not_found);
 
   Key<256> first;
   Key<256> last;
@@ -95,7 +95,7 @@ TEST(StoreTests, File) {
   FromHex(first, h0);
   FromHex(last, h2);
 
-  auto values = MakeFileValueStore<256>("test");
+  auto values = MakeFileValueStore<256>("test.values");
   ASSERT_FALSE(values->Open());
   ASSERT_FALSE(values->Clear());
   KeyValue<256> kv;
@@ -104,6 +104,6 @@ TEST(StoreTests, File) {
   std::string value;
   ASSERT_FALSE(values->Get(kv.value, &value));
   ASSERT_EQ("This is a test value", value);
-  ASSERT_THROW(values->Get(2000, &value), std::out_of_range);
+  ASSERT_EQ(values->Get(2000, &value), db_error::value_not_found);
   ASSERT_FALSE(values->Close());
 }

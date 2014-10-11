@@ -46,7 +46,7 @@ class FileValueStore : public ValueStore<BITS> {
     std::tie(bytesRead, err) = file_->ReadAt(id, str);
     if (err) return err;
     if (bytesRead == 0) return make_error_condition(db_error::value_not_found);
-    if (bytesRead != str.length())
+    if (bytesRead < sizeof(std::uint64_t))
       return make_error_condition(db_error::short_read);
     std::uint64_t length = 0;
     string_read<std::uint64_t>(str, 0, length);
@@ -59,6 +59,8 @@ class FileValueStore : public ValueStore<BITS> {
         return make_error_condition(db_error::value_not_found);
       if (bytesRead != str.length())
         return make_error_condition(db_error::short_read);
+    } else if (bytesRead < str.length()) {
+      return make_error_condition(db_error::short_read);
     }
     value->assign(str, value_offset_, std::string::npos);
     return std::error_condition();
