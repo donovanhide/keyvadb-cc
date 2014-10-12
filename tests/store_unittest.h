@@ -6,6 +6,36 @@
 
 using namespace keyvadb;
 
+template <template <std::uint32_t> class T, std::uint32_t BITS>
+struct KeyStoreTraits : KeyTraits<BITS> {
+  using key_store_type = T<BITS>;
+
+  static std::shared_ptr<key_store_type> Create() {
+    return std::make_shared<key_store_type>(16);
+  }
+};
+
+template <typename T>
+class KeyStoreTest2 : public KeyTest<typename T::KeyTraits> {
+ private:
+  std::shared_ptr<typename T::key_store_type> store_;
+
+ protected:
+  KeyStoreTest2() : store_(T::Create()) {}
+};
+
+typedef ::testing::Types<KeyStoreTraits<MemoryKeyStore, 256>> KeyTypes2;
+
+// typedef ::testing::Types<KeyStoreTraits<MemoryKeyStore, 256>,
+// KeyStoreTraits<FileKeyStore, 256>> KeyTypes2;
+
+TYPED_TEST_CASE(KeyStoreTest2, KeyTypes2);
+
+TYPED_TEST(KeyStoreTest2, SetAndGet) {
+  auto first = this->MakeKey(1);
+  auto last = this->MakeKeyFromHex('F');
+}
+
 // Helper to pack BITS into a template parameter
 template <std::uint32_t BITS>
 class TypeValue {

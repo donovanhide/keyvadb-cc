@@ -17,6 +17,95 @@ static const std::uint64_t SyntheticValue =
 static const std::uint64_t EmptyValue = 0;
 
 template <std::uint32_t BITS>
+class KeyPolicy {
+  using key_type =
+      boost::multiprecision::number<boost::multiprecision::cpp_int_backend<
+          BITS, BITS, boost::multiprecision::unsigned_magnitude,
+          boost::multiprecision::checked, void>>;
+  using seed_type = boost::random::mt19937;
+  using gen_type =
+      boost::random::independent_bits_engine<seed_type, BITS, key_type>;
+
+  // protected:
+  //  ~KeyPolicy() {}
+
+ public:
+  enum { Bits = BITS, HexChars = BITS / 4, Bytes = BITS / 8 };
+  key_type MakeKey(const std::uint64_t num) const { return key_type(num); }
+
+  key_type FromHex(char const c) { return FromHex(std::string(HexChars, c)); }
+  key_type FromHex(std::size_t const count, char const c) {
+    return FromHex(std::string(count, c));
+  }
+  key_type FromHex(std::string const& s) { return key_type("0x" + s); }
+
+  std::string ToHex(key_type const& key) {
+    std::stringstream ss;
+    ss << std::setw(BITS / 4) << std::setfill('0') << std::setbase(16) << key;
+    return ss.str();
+  }
+
+  std::string ToBytes(key_type const& key) {
+    auto bytes = key.backend().limbs();
+    auto length = key.backend().size() * sizeof(*key.backend().limbs());
+    auto s = std::string(reinterpret_cast<const char*>(bytes), length);
+    return s;
+  }
+
+  key_type FromBytes(std::string const& str) {
+    key_type key;
+    auto length = str.size() / sizeof(*key.backend().limbs());
+    key.backend().resize(length, length);
+    auto bytes = key.backend().limbs();
+    std::memcpy(bytes, str.data(), str.size());
+    return key;
+  }
+
+  key_type Distance(key_type const& a, key_type const& b) {
+    if (a > b) return a - b;
+    return b - a;
+  }
+
+  key_type Stride(key_type const& start, key_type const& end,
+                  std::uint32_t const& n) {
+    return (end - start) / n;
+  }
+
+  void NearestStride(key_type const& start, key_type const& stride,
+                     key_type const& value, key_type& distance,
+                     std::uint32_t& nearest) {
+    key_type index;
+    divide_qr(value - start, stride, index, distance);
+    // std::cout << ToHex(start) << " " << ToHex(stride) << " " <<
+    // ToHex(value)
+    //           << " " << ToHex(distance) << std::endl;
+    nearest = static_cast<std::uint32_t>(index);
+    // Round up first
+    if (nearest == 0) {
+      nearest++;
+      distance = stride - distance;
+    }
+    nearest--;
+  }
+
+  const key_type Max() { return boost::math::tools::max_value<key_type>(); }
+
+  const key_type Min() { return boost::math::tools::min_value<key_type>(); }
+
+  std::size_t MaxSize() {
+    auto max = Max();
+    return max.backend().size() * sizeof(*max.backend().limbs());
+  }
+  std::vector<key_type> RandomKeys(std::size_t n, std::uint32_t seed) {
+    seed_type base(seed);
+    gen_type gen(base);
+    std::vector<key_type> v;
+    for (std::size_t i = 0; i < n; i++) v.emplace_back(gen());
+    return v;
+  }
+};
+
+template <std::uint32_t BITS>
 using Key =
     boost::multiprecision::number<boost::multiprecision::cpp_int_backend<
         BITS, BITS, boost::multiprecision::unsigned_magnitude,
