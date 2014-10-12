@@ -6,35 +6,79 @@
 
 using namespace keyvadb;
 
-template <template <std::uint32_t> class T, std::uint32_t BITS>
-struct KeyStoreTraits : KeyTraits<BITS> {
-  using key_store_type = T<BITS>;
+template <std::uint32_t BITS>
+struct StoragePolicy {
+  using KeyStorage = std::shared_ptr<KeyStore<BITS>>;
+  using ValueStorage = std::shared_ptr<ValueStore<BITS>>;
+};
 
-  static std::shared_ptr<key_store_type> Create() {
-    return std::make_shared<key_store_type>(16);
+template <std::uint32_t BITS>
+struct MemoryStoragePolicy : StoragePolicy<BITS> {
+  static typename StoragePolicy<BITS>::KeyStorage CreateKeyStore(
+      std::uint32_t const degree) {
+    return std::make_shared<MemoryKeyStore<BITS>>(degree);
+  }
+  static typename StoragePolicy<BITS>::ValueStorage CreateValueStore() {
+    return std::make_shared<MemoryValueStore<BITS>>();
+  }
+};
+
+template <std::uint32_t BITS>
+struct FileStoragePolicy : StoragePolicy<BITS> {
+  static typename StoragePolicy<BITS>::KeyStorage CreateKeyStore(
+      std::string const& filename, std::uint32_t const blockSize) {
+    // Put ifdef here!
+    auto file = std::unique_ptr<RandomAccessFile>(
+        std::make_unique<PosixRandomAccessFile>(filename));
+    // endif
+    return std::make_shared<FileKeyStore<BITS>>(blockSize, file);
+  }
+  static typename StoragePolicy<BITS>::ValueStorage CreateValueStore(
+      std::string const& filename) {
+    // Put ifdef here!
+    auto file = std::unique_ptr<RandomAccessFile>(
+        std::make_unique<PosixRandomAccessFile>(filename));
+    // endif
+    return std::make_shared<FileValueStore<BITS>>(file);
   }
 };
 
 template <typename T>
-class KeyStoreTest2 : public KeyTest<typename T::KeyTraits> {
- private:
-  std::shared_ptr<typename T::key_store_type> store_;
+class StoreTest : public ::testing::Test {};
+
+template <std::uint32_t BITS>
+class StoreTest<MemoryStoragePolicy<BITS>> : public ::testing::Test {
+  using policy_type = MemoryStoragePolicy<BITS>;
 
  protected:
-  KeyStoreTest2() : store_(T::Create()) {}
+  typename policy_type::KeyStorage keys_;
+  typename policy_type::ValueStorage values_;
+
+ public:
+  StoreTest()
+      : keys_(policy_type::CreateKeyStore(16)),
+        values_(policy_type::CreateValueStore()) {}
 };
 
-typedef ::testing::Types<KeyStoreTraits<MemoryKeyStore, 256>> KeyTypes2;
+template <std::uint32_t BITS>
+class StoreTest<FileStoragePolicy<BITS>> : public ::testing::Test {
+  using policy_type = FileStoragePolicy<BITS>;
 
-// typedef ::testing::Types<KeyStoreTraits<MemoryKeyStore, 256>,
-// KeyStoreTraits<FileKeyStore, 256>> KeyTypes2;
+ protected:
+  typename policy_type::KeyStorage keys_;
+  typename policy_type::ValueStorage values_;
 
-TYPED_TEST_CASE(KeyStoreTest2, KeyTypes2);
+ public:
+  StoreTest()
+      : keys_(policy_type::CreateKeyStore("test.keys", 4096)),
+        values_(policy_type::CreateValueStore("test.values")) {}
+};
 
-TYPED_TEST(KeyStoreTest2, SetAndGet) {
-  auto first = this->MakeKey(1);
-  auto last = this->MakeKeyFromHex('F');
-}
+typedef ::testing::Types<MemoryStoragePolicy<256>, FileStoragePolicy<256>>
+    StoreTypes;
+TYPED_TEST_CASE(StoreTest, StoreTypes);
+
+TYPED_TEST(StoreTest, General) {}
 
 // Helper to pack BITS into a template parameter
 template <std::uint32_t BITS>

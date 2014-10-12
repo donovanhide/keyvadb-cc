@@ -173,8 +173,8 @@ class FileKeyStore : public KeyStore<BITS> {
 };
 
 template <std::uint32_t BITS>
-std::shared_ptr<FileKeyStore<BITS>> MakeFileKeyStore(
-    std::string const& filename, std::uint32_t block_size) {
+std::shared_ptr<KeyStore<BITS>> MakeFileKeyStore(std::string const& filename,
+                                                 std::uint32_t block_size) {
   // Put ifdef here!
   auto file = std::unique_ptr<RandomAccessFile>(
       std::make_unique<PosixRandomAccessFile>(filename));
