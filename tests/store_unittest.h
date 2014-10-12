@@ -26,7 +26,7 @@ class StoreTestBase : public ::testing::Test {
 };
 
 template <typename T>
-class StoreTest : public StoreTestBase<T> {};
+class StoreTest;
 
 template <std::uint32_t BITS>
 class StoreTest<MemoryStoragePolicy<BITS>>
