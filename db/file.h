@@ -88,16 +88,6 @@ class FileValueStore : public ValueStore<BITS> {
 };
 
 template <std::uint32_t BITS>
-std::shared_ptr<FileValueStore<BITS>> MakeFileValueStore(
-    std::string const& filename) {
-  // Put ifdef here!
-  auto file = std::unique_ptr<RandomAccessFile>(
-      std::make_unique<PosixRandomAccessFile>(filename));
-  // endif
-  return std::make_shared<FileValueStore<BITS>>(file);
-}
-
-template <std::uint32_t BITS>
 class FileKeyStore : public KeyStore<BITS> {
   using key_type = Key<BITS>;
   using node_type = Node<BITS>;
@@ -181,5 +171,26 @@ std::shared_ptr<KeyStore<BITS>> MakeFileKeyStore(std::string const& filename,
   // endif
   return std::make_shared<FileKeyStore<BITS>>(block_size, file);
 }
+
+template <std::uint32_t BITS>
+struct FileStoragePolicy {
+  using KeyStorage = std::shared_ptr<KeyStore<BITS>>;
+  using ValueStorage = std::shared_ptr<ValueStore<BITS>>;
+  static KeyStorage CreateKeyStore(std::string const& filename,
+                                   std::uint32_t const blockSize) {
+    // Put ifdef here!
+    auto file = std::unique_ptr<RandomAccessFile>(
+        std::make_unique<PosixRandomAccessFile>(filename));
+    // endif
+    return std::make_shared<FileKeyStore<BITS>>(blockSize, file);
+  }
+  static ValueStorage CreateValueStore(std::string const& filename) {
+    // Put ifdef here!
+    auto file = std::unique_ptr<RandomAccessFile>(
+        std::make_unique<PosixRandomAccessFile>(filename));
+    // endif
+    return std::make_shared<FileValueStore<BITS>>(file);
+  }
+};
 
 }  // namespace keyvadb

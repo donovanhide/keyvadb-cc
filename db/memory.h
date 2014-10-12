@@ -46,11 +46,6 @@ class MemoryValueStore : public ValueStore<BITS> {
 };
 
 template <std::uint32_t BITS>
-std::shared_ptr<ValueStore<BITS>> MakeMemoryValueStore() {
-  return std::make_shared<MemoryValueStore<BITS>>();
-}
-
-template <std::uint32_t BITS>
 class MemoryKeyStore : public KeyStore<BITS> {
  public:
   using node_type = Node<BITS>;
@@ -97,8 +92,15 @@ class MemoryKeyStore : public KeyStore<BITS> {
 };
 
 template <std::uint32_t BITS>
-std::shared_ptr<KeyStore<BITS>> MakeMemoryKeyStore(std::uint32_t const degree) {
-  return std::make_shared<MemoryKeyStore<BITS>>(degree);
-}
+struct MemoryStoragePolicy {
+  using KeyStorage = std::shared_ptr<KeyStore<BITS>>;
+  using ValueStorage = std::shared_ptr<ValueStore<BITS>>;
+  static KeyStorage CreateKeyStore(std::uint32_t const degree) {
+    return std::make_shared<MemoryKeyStore<BITS>>(degree);
+  }
+  static ValueStorage CreateValueStore() {
+    return std::make_shared<MemoryValueStore<BITS>>();
+  }
+};
 
 }  // namespace keyvadb

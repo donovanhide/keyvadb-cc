@@ -26,8 +26,8 @@ FwdIt for_each_line(FwdIt first, FwdIt last, Function f) {
 }
 
 int main() {
-  auto values = MakeMemoryValueStore<256>();
-  auto keys = MakeMemoryKeyStore<256>(85);
+  auto values = MemoryStoragePolicy<256>::CreateValueStore();
+  auto keys = MemoryStoragePolicy<256>::CreateKeyStore(85);
   DB<256> db(keys, values);
   if (auto err = db.Open()) {
     std::cerr << err.message() << std::endl;

@@ -29,7 +29,7 @@ void checkValue(Tree<256> const& tree, KeyValue<256> const kv) {
 }
 
 TEST(TreeTests, General) {
-  auto mem = MakeMemoryKeyStore<256>(16);
+  auto mem = MemoryStoragePolicy<256>::CreateKeyStore(16);
   auto tree = Tree<256>(mem);
   tree.Init(false);
   // Check root has been created
