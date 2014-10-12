@@ -5,16 +5,16 @@
 using namespace keyvadb;
 
 template <typename T>
-class KeyPolicyTest : public ::testing::Test {
+class KeyUtilTest : public ::testing::Test {
  public:
   T policy_;
 };
 
-typedef ::testing::Types<KeyPolicy<1024>, KeyPolicy<256>, KeyPolicy<32>,
-                         KeyPolicy<8>> KeyPolicyTypes;
-TYPED_TEST_CASE(KeyPolicyTest, KeyPolicyTypes);
+typedef ::testing::Types<detail::KeyUtil<1024>, detail::KeyUtil<256>,
+                         detail::KeyUtil<32>, detail::KeyUtil<8>> KeyUtilTypes;
+TYPED_TEST_CASE(KeyUtilTest, KeyUtilTypes);
 
-TYPED_TEST(KeyPolicyTest, General) {
+TYPED_TEST(KeyUtilTest, General) {
   auto zero = this->policy_.MakeKey(0);
   auto two = this->policy_.MakeKey(2);
   auto first = this->policy_.MakeKey(1);

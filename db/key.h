@@ -10,14 +10,9 @@
 #include <limits>
 
 namespace keyvadb {
-static const std::uint64_t EmptyKey = 0;
-
-static const std::uint64_t SyntheticValue =
-    std::numeric_limits<std::uint64_t>::max();
-static const std::uint64_t EmptyValue = 0;
-
+namespace detail {
 template <std::uint32_t BITS>
-class KeyPolicy {
+struct KeyUtil {
   using key_type =
       boost::multiprecision::number<boost::multiprecision::cpp_int_backend<
           BITS, BITS, boost::multiprecision::unsigned_magnitude,
@@ -26,10 +21,6 @@ class KeyPolicy {
   using gen_type =
       boost::random::independent_bits_engine<seed_type, BITS, key_type>;
 
-  // protected:
-  //  ~KeyPolicy() {}
-
- public:
   enum { Bits = BITS, HexChars = BITS / 4, Bytes = BITS / 8 };
   key_type MakeKey(const std::uint64_t num) const { return key_type(num); }
 
@@ -76,9 +67,6 @@ class KeyPolicy {
                      std::uint32_t& nearest) {
     key_type index;
     divide_qr(value - start, stride, index, distance);
-    // std::cout << ToHex(start) << " " << ToHex(stride) << " " <<
-    // ToHex(value)
-    //           << " " << ToHex(distance) << std::endl;
     nearest = static_cast<std::uint32_t>(index);
     // Round up first
     if (nearest == 0) {
@@ -96,6 +84,7 @@ class KeyPolicy {
     auto max = Max();
     return max.backend().size() * sizeof(*max.backend().limbs());
   }
+
   std::vector<key_type> RandomKeys(std::size_t n, std::uint32_t seed) {
     seed_type base(seed);
     gen_type gen(base);
@@ -104,6 +93,13 @@ class KeyPolicy {
     return v;
   }
 };
+}  // namespace detail
+
+static const std::uint64_t EmptyKey = 0;
+
+static const std::uint64_t SyntheticValue =
+    std::numeric_limits<std::uint64_t>::max();
+static const std::uint64_t EmptyValue = 0;
 
 template <std::uint32_t BITS>
 using Key =
