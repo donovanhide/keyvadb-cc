@@ -28,13 +28,12 @@ void checkValue(Tree<256> const& tree, KeyValue<256> const kv) {
   ASSERT_EQ(kv.value, value);
 }
 
-TEST(TreeTests, General) {
-  auto mem = MemoryStoragePolicy<256>::CreateKeyStore(16);
-  auto tree = Tree<256>(mem);
-  tree.Init(false);
+TYPED_TEST(StoreTest, TreeOperations) {
+  auto tree = Tree<256>(this->keys_);
+  ASSERT_FALSE(tree.Init(false));
   // Check root has been created
   checkTree(tree);
-  ASSERT_EQ(1UL, mem->Size());
+  ASSERT_NE(0UL, this->keys_->Size());
   // Insert some random values
   // twice with same seed to insert duplicates
   const std::size_t n = 1000;
@@ -50,7 +49,7 @@ TEST(TreeTests, General) {
       std::tie(journal, err) = tree.Add(buffer->GetSnapshot());
       ASSERT_FALSE(err);
       checkTree(tree);
-      journal->Commit(mem);
+      journal->Commit(this->keys_);
       checkTree(tree);
       if (i == 0) {
         ASSERT_GT(journal->Size(), 0UL);

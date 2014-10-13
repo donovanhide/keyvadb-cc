@@ -35,7 +35,7 @@ class DB {
       : tree_(tree_type(keys)),
         keys_(keys),
         values_(values),
-        buffer_(MakeBuffer<256>()),
+        buffer_(MakeBuffer<BITS>()),
         close_(false),
         thread_(&DB::flushThread, this) {}
   DB(DB const&) = delete;

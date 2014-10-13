@@ -64,6 +64,32 @@ TYPED_TEST(KeyUtilTest, General) {
   ASSERT_EQ(last, l2);
 }
 
+// Redundant
+
+template <std::uint32_t BITS>
+struct KeyTraits {
+  enum { Bits = BITS };
+};
+
+template <typename T>
+class KeyTest : public ::testing::Test {
+  using key_type = Key<T::Bits>;
+
+ protected:
+  key_type GetFromHex(std::string const& s) {
+    key_type key;
+    FromHex<T::Bits>(key, s);
+    return key;
+  }
+  key_type GetFromBytes(std::string const& s) { return FromBytes<T::Bits>(s); }
+  key_type GetMax() { return Max<T::Bits>(); }
+  key_type GetMin() { return Min<T::Bits>(); }
+  key_type MakeKey(std::uint32_t n) { return key_type(n); }
+  key_type MakeKeyFromHex(const char c) {
+    return GetFromHex(std::string(T::Bits / 4, c));
+  }
+  key_type TooBig() { return GetFromHex(std::string(T::Bits, 'F')); }
+};
 typedef ::testing::Types<KeyTraits<1024>, KeyTraits<256>, KeyTraits<32>,
                          KeyTraits<8>> KeyTypes;
 TYPED_TEST_CASE(KeyTest, KeyTypes);
