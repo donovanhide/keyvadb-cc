@@ -14,7 +14,8 @@ namespace keyvadb {
 // Buffer is thread-safe
 template <uint32_t BITS>
 class Buffer {
-  using key_type = Key<BITS>;
+  using util = detail::KeyUtil<BITS>;
+  using key_type = typename util::key_type;
   using key_value_type = KeyValue<BITS>;
   using snapshot_type = std::unique_ptr<Snapshot<BITS>>;
 
@@ -57,7 +58,7 @@ class Buffer {
   }
 
   void FillRandom(std::size_t n, std::uint32_t seed) {
-    auto keys = RandomKeys<BITS>(n, seed);
+    auto keys = util::RandomKeys(n, seed);
     for (std::size_t i = 0; i < n; i++) Add(keys[i], i + 1);
   }
 };

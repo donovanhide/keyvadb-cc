@@ -5,6 +5,7 @@
 
 #include "db/key.h"
 #include "db/node.h"
+#include "db/tree.h"
 #include "db/memory.h"
 #include "db/file.h"
 
@@ -34,6 +35,7 @@ class StoreTestBase : public ::testing::Test {
  protected:
   using node_ptr = std::shared_ptr<Node<T::Bits>>;
   using key_value_type = KeyValue<T::Bits>;
+  using tree_type = Tree<T::Bits>;
   typename T::KeyStorage keys_;
   typename T::ValueStorage values_;
   virtual void InitStores() {}
@@ -52,6 +54,7 @@ class StoreTestBase : public ::testing::Test {
   key_value_type EmptyKeyValue() { return key_value_type(); }
   // Fills a binary key with garbage hex
   std::string HexString(char const c) { return std::string(T::Bits / 8, c); }
+  tree_type GetTree() { return tree_type(keys_); }
 };
 
 template <typename T>

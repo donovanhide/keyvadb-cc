@@ -14,7 +14,8 @@ namespace keyvadb {
 template <uint32_t BITS>
 class Tree {
  public:
-  using key_type = Key<BITS>;
+  using util = detail::KeyUtil<BITS>;
+  using key_type = typename util::key_type;
   using key_value_type = KeyValue<BITS>;
   using store_ptr = std::shared_ptr<KeyStore<BITS>>;
   using node_ptr = std::shared_ptr<Node<BITS>>;
@@ -90,8 +91,8 @@ class Tree {
   }
 
  private:
-  static constexpr key_type firstRootKey() { return Min<BITS>() + 1; }
-  static constexpr key_type lastRootKey() { return Max<BITS>(); }
+  static constexpr key_type firstRootKey() { return util::Min() + 1; }
+  static constexpr key_type lastRootKey() { return util::Max(); }
 
   std::error_condition add(node_ptr const& node, std::uint32_t const level,
                            snapshot_ptr const& snapshot,

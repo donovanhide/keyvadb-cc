@@ -13,6 +13,7 @@ namespace keyvadb {
 
 template <std::uint32_t BITS>
 class DB {
+  using util = detail::KeyUtil<BITS>;
   using key_value_type = KeyValue<BITS>;
   using value_store_type = std::shared_ptr<ValueStore<BITS>>;
   using key_store_type = std::shared_ptr<KeyStore<BITS>>;
@@ -47,7 +48,7 @@ class DB {
   }
 
   std::error_condition Get(std::string const& key, std::string* value) {
-    auto k = FromBytes<BITS>(key);
+    auto k = util::FromBytes(key);
     std::uint64_t valueId;
     try {
       valueId = buffer_->Get(k);

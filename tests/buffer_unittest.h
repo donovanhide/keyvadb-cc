@@ -3,10 +3,11 @@
 
 using namespace keyvadb;
 
-TEST(BufferTests, General) {
+TEST(BufferTest, General) {
+  using util = detail::KeyUtil<256>;
   auto buffer = MakeBuffer<256>();
   ASSERT_EQ(0UL, buffer->Size());
-  auto keys = RandomKeys<256>(1000, 0);
+  auto keys = util::RandomKeys(1000, 0);
   // Adds
   for (auto const& key : keys) buffer->Add(key, 0);
   ASSERT_EQ(keys.size(), buffer->Size());
@@ -19,11 +20,10 @@ TEST(BufferTests, General) {
   ASSERT_EQ(0UL, buffer->Size());
   // Snapshot
   auto snapshot = buffer->GetSnapshot();
-  Key<256> first, last, ones, threes;
-  FromHex(first, h0);
-  FromHex(last, h2);
-  FromHex(ones, h3);
-  FromHex(threes, h6);
+  auto first = util::MakeKey(1);
+  auto last = util::FromHex('F');
+  auto ones = util::FromHex('1');
+  auto threes = util::FromHex('1');
   snapshot->Add(ones, 0);
   snapshot->Add(ones + 1, 0);
   snapshot->Add(ones - 1, 0);

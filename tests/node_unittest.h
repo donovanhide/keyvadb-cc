@@ -3,11 +3,18 @@
 
 using namespace keyvadb;
 
-TEST(NodeTests, Big) {
-  Key<256> first;
-  Key<256> last;
-  FromHex(first, h0);
-  FromHex(last, h2);
+template <typename T>
+class NodeTest : public ::testing::Test {
+ public:
+  T policy_;
+};
+
+typedef ::testing::Types<detail::KeyUtil<256>> NodeTypes;
+TYPED_TEST_CASE(NodeTest, NodeTypes);
+
+TYPED_TEST(NodeTest, Node) {
+  auto first = this->policy_.MakeKey(1);
+  auto last = this->policy_.FromHex('F');
   ASSERT_THROW((Node<256>(0, 84, last, first)), std::domain_error);
   Node<256> node(0, 84, first, last);
   ASSERT_TRUE(node.IsSane());
@@ -19,28 +26,11 @@ TEST(NodeTests, Big) {
   ASSERT_TRUE(node.IsSane());
 }
 
-TEST(NodeTests, Small) {
-  Key<256> first;
-  Key<256> last;
-  Key<256> middle;
-  FromHex(first, h0);
-  FromHex(last, h2);
-  FromHex(middle, h9);
-  Node<256> node(0, 16, first, last);
-  ASSERT_TRUE(node.IsSane());
-  node.AddSyntheticKeyValues();
-  ASSERT_TRUE(node.IsSane());
-  ASSERT_EQ(middle, node.GetKeyValue(7).key);
-  ASSERT_EQ(SyntheticValue, node.GetKeyValue(7).value);
-}
-
-TEST(NodeTests, CopyAssign) {
-  Key<256> first;
-  Key<256> last;
-  Key<256> middle;
-  FromHex(first, h0);
-  FromHex(last, h2);
-  FromHex(middle, h9);
+TYPED_TEST(NodeTest, CopyAssign) {
+  auto first = this->policy_.MakeKey(1);
+  auto last = this->policy_.FromHex('F');
+  auto middle = this->policy_.FromHex(
+      "7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF8");
   Node<256> node(0, 16, first, last);
   ASSERT_TRUE(node.IsSane());
   auto copyNode = Node<256>(node);
@@ -52,6 +42,7 @@ TEST(NodeTests, CopyAssign) {
   auto assignNode = copyNode;
   assignNode.AddSyntheticKeyValues();
   node.SetChild(0, 2);
+  ASSERT_EQ(middle, node.GetKeyValue(7).key);
   ASSERT_NE(assignNode.GetKeyValue(7), copyNode.GetKeyValue(7));
   ASSERT_NE(node.GetChild(0), copyNode.GetChild(0));
 }

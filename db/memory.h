@@ -12,7 +12,8 @@ namespace keyvadb {
 template <std::uint32_t BITS>
 class MemoryValueStore : public ValueStore<BITS> {
  public:
-  using key_type = Key<BITS>;
+  using util = detail::KeyUtil<BITS>;
+  using key_type = typename util::key_type;
   using key_value_type = KeyValue<BITS>;
 
  private:
@@ -39,7 +40,7 @@ class MemoryValueStore : public ValueStore<BITS> {
 
   std::error_condition Set(std::string const& key, std::string const& value,
                            key_value_type& kv) override {
-    kv = {FromBytes<BITS>(key), id_++};
+    kv = {util::FromBytes(key), id_++};
     map_[kv.value] = value;
     return std::error_condition();
   };
@@ -48,10 +49,11 @@ class MemoryValueStore : public ValueStore<BITS> {
 template <std::uint32_t BITS>
 class MemoryKeyStore : public KeyStore<BITS> {
  public:
+  using util = detail::KeyUtil<BITS>;
+  using key_type = typename util::key_type;
   using node_type = Node<BITS>;
   using node_ptr = std::shared_ptr<node_type>;
   using node_result = std::pair<node_ptr, std::error_condition>;
-  using key_type = Key<BITS>;
 
  private:
   std::uint32_t degree_;

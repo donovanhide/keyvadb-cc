@@ -9,10 +9,11 @@ namespace keyvadb {
 
 template <std::uint32_t BITS>
 class Delta {
+  using util = detail::KeyUtil<BITS>;
+  using key_type = typename util::key_type;
   using node_type = Node<BITS>;
   using node_ptr = std::shared_ptr<node_type>;
   using snapshot_ptr = std::unique_ptr<Snapshot<BITS>>;
-  using key_type = Key<BITS>;
 
  private:
   std::uint64_t existing_;
@@ -87,11 +88,11 @@ class Delta {
     current_->Clear();
     auto stride = current_->Stride();
     std::size_t index = 0;
-    auto best = Max<BITS>();
+    auto best = util::Max();
     for (auto const& kv : combined) {
       std::uint32_t nearest;
       key_type distance;
-      NearestStride(current_->First(), stride, kv.key, distance, nearest);
+      util::NearestStride(current_->First(), stride, kv.key, distance, nearest);
       if ((nearest == index && distance < best) || (nearest != index)) {
         current_->SetKeyValue(nearest, kv);
         best = distance;

@@ -11,7 +11,8 @@ namespace keyvadb {
 
 template <std::uint32_t BITS>
 class FileValueStore : public ValueStore<BITS> {
-  using key_type = Key<BITS>;
+  using util = detail::KeyUtil<BITS>;
+  using key_type = typename util::key_type;
   using key_value_type = KeyValue<BITS>;
   using file_type = std::unique_ptr<RandomAccessFile>;
 
@@ -23,7 +24,7 @@ class FileValueStore : public ValueStore<BITS> {
  public:
   explicit FileValueStore(file_type& file)
       : file_(std::move(file)),
-        value_offset_(MaxSize<BITS>() + sizeof(std::uint64_t)) {}
+        value_offset_(util::MaxSize() + sizeof(std::uint64_t)) {}
   FileValueStore(const FileValueStore&) = delete;
   FileValueStore& operator=(const FileValueStore&) = delete;
 
@@ -76,7 +77,7 @@ class FileValueStore : public ValueStore<BITS> {
     pos += key.size();
     str.replace(pos, value.size(), value);
     size_ += length;
-    kv = {FromBytes<BITS>(key), size_ - length};
+    kv = {util::FromBytes(key), size_ - length};
     std::size_t bytesWritten;
     std::error_condition err;
     std::tie(bytesWritten, err) = file_->WriteAt(str, kv.value);
@@ -89,7 +90,8 @@ class FileValueStore : public ValueStore<BITS> {
 
 template <std::uint32_t BITS>
 class FileKeyStore : public KeyStore<BITS> {
-  using key_type = Key<BITS>;
+  using util = detail::KeyUtil<BITS>;
+  using key_type = typename util::key_type;
   using node_type = Node<BITS>;
   using node_ptr = std::shared_ptr<node_type>;
   using node_result = std::pair<node_ptr, std::error_condition>;
@@ -98,16 +100,12 @@ class FileKeyStore : public KeyStore<BITS> {
  private:
   const std::uint32_t block_size_;
   const std::uint32_t degree_;
-  const std::size_t key_size_;
   file_type file_;
   std::atomic_uint_fast64_t size_;
 
  public:
   FileKeyStore(std::size_t const block_size, file_type& file)
-      : block_size_(block_size),
-        degree_(84),
-        key_size_(MaxSize<BITS>()),
-        file_(std::move(file)) {}
+      : block_size_(block_size), degree_(84), file_(std::move(file)) {}
   FileKeyStore(const FileKeyStore&) = delete;
   FileKeyStore& operator=(const FileKeyStore&) = delete;
 

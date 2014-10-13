@@ -24,7 +24,8 @@ static const std::uint64_t EmptyChild = 0;
 template <std::uint32_t BITS>
 class Node {
  public:
-  using key_type = Key<BITS>;
+  using util = detail::KeyUtil<BITS>;
+  using key_type = typename util::key_type;
   using key_value_type = KeyValue<BITS>;
   using key_values_type = std::vector<key_value_type>;
   using children_type = std::vector<std::uint64_t>;
@@ -55,17 +56,16 @@ class Node {
         children_(degree),
         keys(degree - 1) {
     if (first >= last)
-      throw std::domain_error("first must be lower than last:" + ToHex(first) +
-                              " " + ToHex(last));
+      throw std::domain_error("first must be lower than last:" +
+                              util::ToHex(first) + " " + util::ToHex(last));
   }
 
   std::size_t Write(std::string& str) const {
     size_t pos = 0;
-    size_t length = MaxSize<BITS>();
-    pos += WriteBytes(first_, pos, length, str);
-    pos += WriteBytes(last_, pos, length, str);
+    pos += util::WriteBytes(first_, pos, str);
+    pos += util::WriteBytes(last_, pos, str);
     for (auto const& kv : keys) {
-      pos += WriteBytes(kv.key, pos, length, str);
+      pos += util::WriteBytes(kv.key, pos, str);
       pos += string_replace<std::uint64_t>(kv.value, pos, str);
     }
     for (auto const& cid : children_)
@@ -75,11 +75,10 @@ class Node {
 
   std::size_t Read(std::string const& str) {
     size_t pos = 0;
-    size_t length = MaxSize<BITS>();
-    pos += ReadBytes(str, pos, length, first_);
-    pos += ReadBytes(str, pos, length, last_);
+    pos += util::ReadBytes(str, pos, first_);
+    pos += util::ReadBytes(str, pos, last_);
     for (auto& kv : keys) {
-      pos += ReadBytes(str, pos, length, kv.key);
+      pos += util::ReadBytes(str, pos, kv.key);
       pos += string_read<std::uint64_t>(str, pos, kv.value);
     }
     for (auto& cid : children_)
@@ -188,11 +187,9 @@ class Node {
   }
   constexpr std::size_t MaxKeys() const { return keys.size(); }
   constexpr std::size_t Degree() const { return children_.size(); }
-  constexpr key_type Distance() const {
-    return keyvadb::Distance(first_, last_);
-  }
+  constexpr key_type Distance() const { return util::Distance(first_, last_); }
   constexpr key_type Stride() const {
-    return keyvadb::Stride(first_, last_, Degree());
+    return util::Stride(first_, last_, Degree());
   }
 
   friend std::ostream& operator<<(std::ostream& stream, const Node& node) {
@@ -200,14 +197,14 @@ class Node {
     stream << "Keys:\t\t" << node.MaxKeys() - node.EmptyKeyCount() << std::endl;
     stream << "Children:\t" << node.Degree() - node.EmptyChildCount()
            << std::endl;
-    stream << "First:\t\t" << ToHex(node.first_) << std::endl;
-    stream << "Last:\t\t" << ToHex(node.last_) << std::endl;
-    stream << "Stride:\t\t" << ToHex(node.Stride()) << std::endl;
-    stream << "Distance:\t" << ToHex(node.Distance()) << std::endl;
+    stream << "First:\t\t" << util::ToHex(node.first_) << std::endl;
+    stream << "Last:\t\t" << util::ToHex(node.last_) << std::endl;
+    stream << "Stride:\t\t" << util::ToHex(node.Stride()) << std::endl;
+    stream << "Distance:\t" << util::ToHex(node.Distance()) << std::endl;
     stream << "--------" << std::endl;
     for (std::size_t i = 0; i < node.MaxKeys(); i++) {
       stream << std::setfill('0') << std::setw(3) << i << " ";
-      stream << ToHex(node.keys.at(i).key) << " ";
+      stream << util::ToHex(node.keys.at(i).key) << " ";
       if (node.keys.at(i).value == SyntheticValue) {
         stream << "Synthetic"
                << " ";
