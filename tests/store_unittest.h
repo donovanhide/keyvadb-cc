@@ -9,6 +9,7 @@ using namespace keyvadb;
 template <typename T>
 class StoreTestBase : public ::testing::Test {
  protected:
+  using node_ptr = std::shared_ptr<Node<T::Bits>>;
   typename T::KeyStorage keys_;
   typename T::ValueStorage values_;
   virtual void InitStores() {}
@@ -23,6 +24,7 @@ class StoreTestBase : public ::testing::Test {
     ASSERT_FALSE(keys_->Close());
     ASSERT_FALSE(values_->Close());
   }
+  node_ptr EmptyNode() { return nullptr; }
 };
 
 template <typename T>
@@ -57,16 +59,14 @@ typedef ::testing::Types<MemoryStoragePolicy<256>, FileStoragePolicy<256>>
 TYPED_TEST_CASE(StoreTest, StoreTypes);
 
 TYPED_TEST(StoreTest, SetAndGetKeys) {
-  Key<256> first;
-  Key<256> last;
-  FromHex(first, h0);
-  FromHex(last, h2);
+  auto first = this->keys_->MakeKey(1);
+  auto last = this->keys_->FromHex('F');
   auto root = this->keys_->New(first, last);
   ASSERT_EQ(0UL, root->Id());
   ASSERT_EQ(first, root->First());
   ASSERT_EQ(last, root->Last());
   std::error_condition err;
-  Tree<256>::node_ptr node;
+  auto node = this->EmptyNode();
   std::tie(node, err) = this->keys_->Get(root->Id());
   ASSERT_EQ(db_error::key_not_found, err.value());
   ASSERT_EQ(nullptr, node);
@@ -77,11 +77,6 @@ TYPED_TEST(StoreTest, SetAndGetKeys) {
 }
 
 TYPED_TEST(StoreTest, SetAndGetValues) {
-  Key<256> first;
-  Key<256> last;
-  FromHex(first, h0);
-  FromHex(last, h2);
-
   KeyValue<256> kv;
   ASSERT_FALSE(this->values_->Set("This is a test key with 32 chars",
                                   "This is a test value", kv));

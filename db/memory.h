@@ -95,6 +95,7 @@ template <std::uint32_t BITS>
 struct MemoryStoragePolicy {
   using KeyStorage = std::shared_ptr<KeyStore<BITS>>;
   using ValueStorage = std::shared_ptr<ValueStore<BITS>>;
+  enum { Bits = BITS };
   static KeyStorage CreateKeyStore(std::uint32_t const degree) {
     return std::make_shared<MemoryKeyStore<BITS>>(degree);
   }

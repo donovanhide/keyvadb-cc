@@ -166,6 +166,7 @@ template <std::uint32_t BITS>
 struct FileStoragePolicy {
   using KeyStorage = std::shared_ptr<KeyStore<BITS>>;
   using ValueStorage = std::shared_ptr<ValueStore<BITS>>;
+  enum { Bits = BITS };
   static KeyStorage CreateKeyStore(std::string const& filename,
                                    std::uint32_t const blockSize) {
     // Put ifdef here!
