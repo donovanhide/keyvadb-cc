@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <map>
+#include <system_error>
 #include "db/key.h"
 #include "db/store.h"
 #include "db/delta.h"
@@ -23,11 +24,12 @@ class Journal {
     deltas_.emplace(level, delta);
   }
 
-  void Commit(key_store_ptr const& store) {
+  std::error_condition Commit(key_store_ptr const& store) {
     // write deepest nodes first so that no parent can refer
     // to a non-existent child
     for (auto it = deltas_.crbegin(), end = deltas_.crend(); it != end; ++it)
-      store->Set(it->second.Current());
+      if (auto err = store->Set(it->second.Current())) return err;
+    return std::error_condition();
   }
 
   constexpr std::size_t Size() const { return deltas_.size(); }

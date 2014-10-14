@@ -36,7 +36,7 @@ TYPED_TEST(StoreTest, TreeOperations) {
   ASSERT_NE(0UL, this->keys_->Size());
   // Insert some random values
   // twice with same seed to insert duplicates
-  const std::size_t n = 10000;
+  const std::size_t n = 1000;
   const std::size_t rounds = 4;
   for (std::size_t i = 0; i < 2; i++) {
     for (std::size_t j = 0; j < rounds; j++) {
@@ -49,7 +49,7 @@ TYPED_TEST(StoreTest, TreeOperations) {
       std::tie(journal, err) = tree.Add(buffer->GetSnapshot());
       ASSERT_FALSE(err);
       checkTree(tree);
-      journal->Commit(this->keys_);
+      ASSERT_FALSE(journal->Commit(this->keys_));
       checkTree(tree);
       if (i == 0) {
         ASSERT_GT(journal->Size(), 0UL);

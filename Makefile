@@ -10,9 +10,9 @@ GTEST_MAIN_CC = $(TEST_DIR)/gtest/gtest_main.cc
 cxxflags.debug := -g -O0
 cxxflags.release := -g -O3 -DNDEBUG
 
-CPPFLAGS += -I$(TEST_DIR) -I.  -isystem $(TEST_DIR)/gtest
+CPPFLAGS += -I$(TEST_DIR) -I. -isystem $(TEST_DIR)/gtest
 CXXFLAGS += ${cxxflags.${BUILD}} -Wall -Wextra -Wpedantic -std=c++1y -DGTEST_LANG_CXX11=1
-LDFLAGS +=-lpthread
+LDFLAGS += -lpthread
 
 all : keyvadb_unittests kvd
 

@@ -6,25 +6,26 @@
 #include <thread>
 #include <system_error>
 #include "db/memory.h"
+#include "db/file.h"
 #include "db/buffer.h"
 #include "db/tree.h"
 
 namespace keyvadb {
 
-template <std::uint32_t BITS>
+template <class Storage>
 class DB {
-  using util = detail::KeyUtil<BITS>;
-  using key_value_type = KeyValue<BITS>;
-  using value_store_type = std::shared_ptr<ValueStore<BITS>>;
-  using key_store_type = std::shared_ptr<KeyStore<BITS>>;
-  using buffer_type = std::shared_ptr<Buffer<BITS>>;
-  using journal_type = std::unique_ptr<Journal<BITS>>;
-  using tree_type = Tree<BITS>;
+  using util = detail::KeyUtil<Storage::Bits>;
+  using key_store_type = typename Storage::KeyStorage;
+  using value_store_type = typename Storage::ValueStorage;
+  using key_value_type = KeyValue<Storage::Bits>;
+  using buffer_type = std::shared_ptr<Buffer<Storage::Bits>>;
+  using journal_type = std::unique_ptr<Journal<Storage::Bits>>;
+  using tree_type = Tree<Storage::Bits>;
 
  private:
-  tree_type tree_;
   key_store_type keys_;
   value_store_type values_;
+  tree_type tree_;
   buffer_type buffer_;
   bool close_;
   std::thread thread_;
@@ -32,11 +33,19 @@ class DB {
   std::mutex mutex_;
 
  public:
-  DB(key_store_type const& keys, value_store_type const& values)
-      : tree_(tree_type(keys)),
-        keys_(keys),
-        values_(values),
-        buffer_(MakeBuffer<BITS>()),
+  explicit DB(std::uint32_t degree)
+      : keys_(Storage::CreateKeyStore(degree)),
+        values_(Storage::CreateValueStore()),
+        tree_(tree_type(keys_)),
+        buffer_(MakeBuffer<Storage::Bits>()),
+        close_(false),
+        thread_(&DB::flushThread, this) {}
+  DB(std::string valueFileName, std::string keyFileName,
+     std::uint32_t blockSize)
+      : keys_(Storage::CreateKeyStore(valueFileName, blockSize)),
+        values_(Storage::CreateValueStore(keyFileName)),
+        tree_(tree_type(keys_)),
+        buffer_(MakeBuffer<Storage::Bits>()),
         close_(false),
         thread_(&DB::flushThread, this) {}
   DB(DB const&) = delete;
@@ -44,6 +53,7 @@ class DB {
 
   std::error_condition Open() {
     if (auto err = keys_->Open()) return err;
+    if (auto err = tree_.Init(false)) return err;
     return values_->Open();
   }
 
@@ -78,6 +88,7 @@ class DB {
  private:
   std::error_condition flush() {
     auto snapshot = buffer_->GetSnapshot();
+    if (snapshot->Size() == 0) return std::error_condition();
     std::cout << "Flushing " << snapshot->Size() << " keys" << std::endl;
     journal_type journal;
     std::error_condition err;
@@ -102,5 +113,4 @@ class DB {
     // thread exits
   }
 };
-
 }  // namespace keyvadb

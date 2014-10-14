@@ -1,22 +1,9 @@
 
 *.o
-
 keyvadb.sublime-project
-
 keyvadb.sublime-workspace
-
-key_unittest
-
-keyvadb_tests
-
 keyvadb_unittests
-
 *.plist
-
 kvd
-
-test
-
-test.keys
-
-test.values
+*.keys
+*.values
