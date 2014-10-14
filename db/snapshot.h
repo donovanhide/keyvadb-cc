@@ -31,6 +31,8 @@ struct Snapshot : private detail::KeyUtil<BITS> {
 
   constexpr size_t CountRange(const key_type& first,
                               const key_type& last) const {
+    if (first > last)
+      throw std::invalid_argument("First must not be greater than last");
     return std::distance(Lower(first), Upper(last));
   }
 

@@ -30,7 +30,7 @@ TYPED_TEST(NodeTest, CopyAssign) {
   auto first = this->policy_.MakeKey(1);
   auto last = this->policy_.FromHex('F');
   auto middle = this->policy_.FromHex(
-      "7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF8");
+      "7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF9");
   Node<256> node(0, 16, first, last);
   ASSERT_TRUE(node.IsSane());
   auto copyNode = Node<256>(node);

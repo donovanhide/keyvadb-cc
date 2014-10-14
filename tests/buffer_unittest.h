@@ -23,7 +23,7 @@ TEST(BufferTest, General) {
   auto first = util::MakeKey(1);
   auto last = util::FromHex('F');
   auto ones = util::FromHex('1');
-  auto threes = util::FromHex('1');
+  auto threes = util::FromHex('3');
   snapshot->Add(ones, 0);
   snapshot->Add(ones + 1, 0);
   snapshot->Add(ones - 1, 0);
@@ -31,7 +31,9 @@ TEST(BufferTest, General) {
   snapshot->Add(ones - 2, 0);
   snapshot->Add(threes, 0);
   // ContainsRange
+
   ASSERT_TRUE(snapshot->ContainsRange(first, last));
+  ASSERT_THROW(snapshot->ContainsRange(last, first), std::invalid_argument);
   ASSERT_FALSE(snapshot->ContainsRange(first, first));
   ASSERT_FALSE(snapshot->ContainsRange(last, last));
   ASSERT_TRUE(snapshot->ContainsRange(ones, threes));
