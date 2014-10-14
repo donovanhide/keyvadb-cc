@@ -35,8 +35,7 @@ template <std::uint32_t BITS>
 class KeyStore {
   using util = detail::KeyUtil<BITS>;
   using key_type = typename util::key_type;
-  using node_type = Node<BITS>;
-  using node_ptr = std::shared_ptr<node_type>;
+  using node_ptr = std::shared_ptr<Node<BITS>>;
   using node_result = std::pair<node_ptr, std::error_condition>;
 
  public:
