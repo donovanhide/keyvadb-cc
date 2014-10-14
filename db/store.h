@@ -15,9 +15,8 @@ template <std::uint32_t BITS>
 class Node;
 
 template <std::uint32_t BITS>
-class ValueStore : public detail::KeyUtil<BITS> {
+class ValueStore {
   using key_value_type = KeyValue<BITS>;
-  using key_type = typename detail::KeyUtil<BITS>::key_type;
   using value_result = std::pair<key_value_type, std::error_condition>;
 
  public:
@@ -33,11 +32,12 @@ class ValueStore : public detail::KeyUtil<BITS> {
 };
 
 template <std::uint32_t BITS>
-class KeyStore : public detail::KeyUtil<BITS> {
+class KeyStore {
+  using util = detail::KeyUtil<BITS>;
+  using key_type = typename util::key_type;
   using node_type = Node<BITS>;
   using node_ptr = std::shared_ptr<node_type>;
   using node_result = std::pair<node_ptr, std::error_condition>;
-  using key_type = typename detail::KeyUtil<BITS>::key_type;
 
  public:
   virtual ~KeyStore() = default;

@@ -8,8 +8,9 @@
 namespace keyvadb {
 
 template <uint32_t BITS>
-struct Snapshot : private detail::KeyUtil<BITS> {
-  using key_type = typename detail::KeyUtil<BITS>::key_type;
+struct Snapshot {
+  using util = detail::KeyUtil<BITS>;
+  using key_type = typename util::key_type;
   using key_value_type = KeyValue<BITS>;
   using snapshot_func = std::function<void(key_value_type const)>;
   using const_iterator = typename std::set<key_value_type>::const_iterator;

@@ -12,7 +12,7 @@
 using namespace keyvadb;
 
 template <typename T>
-class StoreTestBase : public ::testing::Test {
+class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits> {
  protected:
   using node_ptr = std::shared_ptr<Node<T::Bits>>;
   using key_value_type = KeyValue<T::Bits>;

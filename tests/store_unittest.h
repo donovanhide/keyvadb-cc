@@ -7,8 +7,8 @@
 using namespace keyvadb;
 
 TYPED_TEST(StoreTest, SetAndGetKeys) {
-  auto first = this->keys_->MakeKey(1);
-  auto last = this->keys_->FromHex('F');
+  auto first = this->MakeKey(1);
+  auto last = this->FromHex('F');
   auto root = this->keys_->New(first, last);
   ASSERT_EQ(0UL, root->Id());
   ASSERT_EQ(first, root->First());
