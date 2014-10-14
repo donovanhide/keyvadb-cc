@@ -86,7 +86,7 @@ class Tree {
       stream << "Level:\t\t" << level << std::endl << *n;
       return std::error_condition();
     });
-    if (err) stream << err << std::endl;
+    if (err) stream << err.message() << std::endl;
     return stream;
   }
 

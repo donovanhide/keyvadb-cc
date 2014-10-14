@@ -129,7 +129,7 @@ class FileKeyStore : public KeyStore<BITS> {
   node_result Get(std::uint64_t const id) const {
     std::string str;
     str.resize(block_size_);
-    auto node = std::make_shared<node_type>(size_ - block_size_, degree_, 0, 1);
+    auto node = std::make_shared<node_type>(id, degree_, 0, 1);
     std::size_t bytesRead;
     std::error_condition err;
     std::tie(bytesRead, err) = file_->ReadAt(id, str);

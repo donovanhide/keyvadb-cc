@@ -36,8 +36,8 @@ TYPED_TEST(StoreTest, TreeOperations) {
   ASSERT_NE(0UL, this->keys_->Size());
   // Insert some random values
   // twice with same seed to insert duplicates
-  const std::size_t n = 100;
-  const std::size_t rounds = 2;
+  const std::size_t n = 10000;
+  const std::size_t rounds = 4;
   for (std::size_t i = 0; i < 2; i++) {
     for (std::size_t j = 0; j < rounds; j++) {
       auto buffer = MakeBuffer<256>();
