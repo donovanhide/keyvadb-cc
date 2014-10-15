@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include "db/cxx11.h"
 
 template <class T>
 std::size_t string_replace(T const& t, std::size_t const pos, std::string& s) {

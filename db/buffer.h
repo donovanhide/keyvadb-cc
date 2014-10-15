@@ -5,6 +5,7 @@
 #include <map>
 #include <vector>
 #include <mutex>
+#include "db/cxx11.h"
 #include "db/key.h"
 #include "db/node.h"
 #include "db/snapshot.h"

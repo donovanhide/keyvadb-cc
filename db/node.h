@@ -6,6 +6,7 @@
 #include <string>
 #include <system_error>
 #include <algorithm>
+#include "db/cxx11.h"
 #include "db/key.h"
 #include "db/encoding.h"
 #include "db/snapshot.h"
@@ -131,7 +132,7 @@ class Node {
     return err;
   }
 
-  constexpr std::uint64_t Find(key_type const& key) const {
+  std::uint64_t Find(key_type const& key) const {
     auto found = std::find_if(
         keys.cbegin(), keys.cend(),
         [&key](key_value_type const& kv) { return kv.key == key; });
@@ -146,7 +147,7 @@ class Node {
     keys.at(i) = kv;
   }
 
-  constexpr bool IsSane() const {
+  bool IsSane() const {
     if (first_ >= last_) return false;
     if (!std::is_sorted(keys.cbegin(), keys.cend())) return false;
     for (std::size_t i = 1; i < Degree() - 1; i++) {

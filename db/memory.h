@@ -5,6 +5,7 @@
 #include <atomic>
 #include <unordered_map>
 #include <utility>
+#include "db/cxx11.h"
 #include "db/store.h"
 
 namespace keyvadb {

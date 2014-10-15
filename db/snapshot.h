@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <set>
+#include "db/cxx11.h"
 #include "db/key.h"
 
 namespace keyvadb {
@@ -30,8 +31,7 @@ struct Snapshot {
     return CountRange(first, last) > 0;
   }
 
-  constexpr size_t CountRange(const key_type& first,
-                              const key_type& last) const {
+  size_t CountRange(const key_type& first, const key_type& last) const {
     if (first > last)
       throw std::invalid_argument("First must not be greater than last");
     return std::distance(Lower(first), Upper(last));
