@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <string>
 #include <utility>
-#include "db/cxx11.h"
 #include "db/store.h"
 #include "db/env.h"
 #include "db/encoding.h"

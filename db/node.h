@@ -6,7 +6,6 @@
 #include <string>
 #include <system_error>
 #include <algorithm>
-#include "db/cxx11.h"
 #include "db/key.h"
 #include "db/encoding.h"
 #include "db/snapshot.h"

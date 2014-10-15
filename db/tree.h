@@ -5,7 +5,6 @@
 #include <unordered_map>
 #include <system_error>
 #include <utility>
-#include "db/cxx11.h"
 #include "db/node.h"
 #include "db/store.h"
 #include "db/delta.h"

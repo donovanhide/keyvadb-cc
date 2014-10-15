@@ -4,7 +4,6 @@
 #include <cstddef>
 #include <set>
 #include <algorithm>
-#include "db/cxx11.h"
 
 namespace keyvadb {
 

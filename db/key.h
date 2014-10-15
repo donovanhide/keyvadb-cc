@@ -8,7 +8,6 @@
 #include <vector>
 #include <string>
 #include <limits>
-#include "db/cxx11.h"
 
 namespace keyvadb {
 

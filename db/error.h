@@ -2,7 +2,6 @@
 
 #include <string>
 #include <system_error>
-#include "db/cxx11.h"
 
 namespace keyvadb {
 enum db_error { key_not_found = 1, value_not_found, short_read, short_write };

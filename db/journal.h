@@ -4,7 +4,6 @@
 #include <cstddef>
 #include <map>
 #include <system_error>
-#include "db/cxx11.h"
 #include "db/key.h"
 #include "db/store.h"
 #include "db/delta.h"

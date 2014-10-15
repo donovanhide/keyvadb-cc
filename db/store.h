@@ -5,7 +5,6 @@
 #include <string>
 #include <utility>
 #include <system_error>
-#include "db/cxx11.h"
 #include "db/key.h"
 #include "db/error.h"
 

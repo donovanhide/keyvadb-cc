@@ -5,7 +5,6 @@
 #include <condition_variable>
 #include <thread>
 #include <system_error>
-#include "db/cxx11.h"
 #include "db/memory.h"
 #include "db/file.h"
 #include "db/buffer.h"

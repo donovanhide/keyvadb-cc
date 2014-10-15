@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <cstddef>
 #include <set>
-#include "db/cxx11.h"
 #include "db/key.h"
 
 namespace keyvadb {
