@@ -64,14 +64,20 @@ class DB {
     }
   }
 
+  // Not threadsafe
   std::error_condition Open() {
     if (auto err = keys_->Open())
       return err;
     if (auto err = tree_.Init(false))
       return err;
-    if (auto err = values_->Open())
+    return values_->Open();
+  }
+
+  // Not threadsafe
+  std::error_condition Clear() {
+    if (auto err = keys_->Clear())
       return err;
-    return std::error_condition();
+    return values_->Clear();
   }
 
   std::error_condition Get(std::string const &key, std::string *value) {
