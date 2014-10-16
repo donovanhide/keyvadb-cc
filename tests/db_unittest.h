@@ -7,21 +7,21 @@ using namespace keyvadb;
 template <typename StoragePolicy>
 class DBTest : public ::testing::Test {
  public:
-  DB<StoragePolicy> db;
+  DB<StoragePolicy, StandardLog> db;
   DBTest() : db(16) {}
 };
 
 template <std::uint32_t BITS>
 class DBTest<MemoryStoragePolicy<BITS>> : public ::testing::Test {
  public:
-  DB<MemoryStoragePolicy<BITS>> db;
+  DB<MemoryStoragePolicy<BITS>, StandardLog> db;
   DBTest() : db(16) {}
 };
 
 template <std::uint32_t BITS>
 class DBTest<FileStoragePolicy<BITS>> : public ::testing::Test {
  public:
-  DB<FileStoragePolicy<BITS>> db;
+  DB<FileStoragePolicy<BITS>, StandardLog> db;
   DBTest() : db("test.keys", "test.values", 4096) {}
 };
 

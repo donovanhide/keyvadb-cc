@@ -9,10 +9,11 @@
 #include "db/file.h"
 #include "db/buffer.h"
 #include "db/tree.h"
+#include "db/log.h"
 
 namespace keyvadb {
 
-template <class Storage>
+template <class Storage, class Log = NullLog>
 class DB {
   using util = detail::KeyUtil<Storage::Bits>;
   using key_store_type = typename Storage::KeyStorage;
@@ -24,6 +25,7 @@ class DB {
 
  private:
   enum { key_length = Storage::Bits / 8 };
+  Log log_;
   key_store_type keys_;
   value_store_type values_;
   tree_type tree_;
@@ -33,7 +35,8 @@ class DB {
 
  public:
   explicit DB(std::uint32_t degree)
-      : keys_(Storage::CreateKeyStore(degree)),
+      : log_(Log{}),
+        keys_(Storage::CreateKeyStore(degree)),
         values_(Storage::CreateValueStore()),
         tree_(tree_type(keys_)),
         buffer_(MakeBuffer<Storage::Bits>()),
@@ -42,7 +45,8 @@ class DB {
 
   DB(std::string valueFileName, std::string keyFileName,
      std::uint32_t blockSize)
-      : keys_(Storage::CreateKeyStore(valueFileName, blockSize)),
+      : log_(Log{}),
+        keys_(Storage::CreateKeyStore(valueFileName, blockSize)),
         values_(Storage::CreateValueStore(keyFileName)),
         tree_(tree_type(keys_)),
         buffer_(MakeBuffer<Storage::Bits>()),
@@ -55,12 +59,14 @@ class DB {
     close_ = true;
     try {
       thread_.join();
-      if (auto err = values_->Close())
-        std::cerr << err.message() << std::endl;
+      if (auto err = values_->Close()) {
+        log_.error << err.message();
+        std::cerr << err.message();
+      }
       if (auto err = keys_->Close())
-        std::cerr << err.message() << std::endl;
+        std::cerr << err.message();
     } catch (std::exception &ex) {
-      std::cerr << ex.what() << std::endl;
+      std::cerr << ex.what();
     }
   }
 
@@ -111,7 +117,8 @@ class DB {
     auto snapshot = buffer_->GetSnapshot();
     if (snapshot->Size() == 0)
       return std::error_condition();
-    std::cout << "Flushing " << snapshot->Size() << " keys" << std::endl;
+    if (log_.info)
+      log_.info << "Flushing " << snapshot->Size() << " keys";
     journal_type journal;
     std::error_condition err;
     std::tie(journal, err) = tree_.Add(snapshot);
@@ -119,8 +126,9 @@ class DB {
       return err;
     journal->Commit(keys_);
     buffer_->ClearSnapshot(snapshot);
-    std::cout << "Flushed " << snapshot->Size() << " keys into "
-              << journal->Size() << " nodes" << std::endl;
+    if (log_.info)
+      log_.info << "Flushed " << snapshot->Size() << " keys into "
+                << journal->Size() << " nodes";
     return std::error_condition();
   }
 
@@ -129,7 +137,9 @@ class DB {
       std::this_thread::sleep_for(std::chrono::seconds(1));
       bool stop = close_;
       if (auto err = flush())
-        std::cerr << err.message() << ":" << err.category().name() << std::endl;
+        if (log_.error)
+          log_.error << "Flushing " << err.message() << ":"
+                     << err.category().name();
       if (stop)
         break;
     }
