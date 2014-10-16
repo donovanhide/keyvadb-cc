@@ -37,9 +37,11 @@ class Tree {
     node_ptr root;
     std::error_condition err;
     std::tie(root, err) = store_->Get(rootId);
-    if (!err) return err;
+    if (!err)
+      return err;
     root = store_->New(firstRootKey(), lastRootKey());
-    if (addSynthetics) root->AddSyntheticKeyValues();
+    if (addSynthetics)
+      root->AddSyntheticKeyValues();
     return store_->Set(root);
   }
 
@@ -53,7 +55,8 @@ class Tree {
     node_ptr root;
     std::error_condition err;
     std::tie(root, err) = store_->Get(rootId);
-    if (err) return std::make_pair(std::move(journal), err);
+    if (err)
+      return std::make_pair(std::move(journal), err);
     err = add(root, 0, snapshot, journal);
     return std::make_pair(std::move(journal), err);
   }
@@ -86,7 +89,8 @@ class Tree {
       stream << "Level:\t\t" << level << std::endl << *n;
       return std::error_condition();
     });
-    if (err) stream << err.message() << std::endl;
+    if (err)
+      stream << err.message() << std::endl;
     return stream;
   }
 
@@ -114,14 +118,17 @@ class Tree {
               node_ptr child;
               std::error_condition err;
               std::tie(child, err) = store_->Get(cid);
-              if (err) return err;
+              if (err)
+                return err;
               return add(child, level + 1, snapshot, journal);
             }
           });
-      if (err) return err;
+      if (err)
+        return err;
     }
     delta.CheckSanity();
-    if (delta.Dirty()) journal->Add(level, delta);
+    if (delta.Dirty())
+      journal->Add(level, delta);
     return std::error_condition();
   }
 
@@ -130,15 +137,18 @@ class Tree {
     node_ptr node;
     std::error_condition err;
     std::tie(node, err) = store_->Get(id);
-    if (err) return std::make_pair(EmptyValue, err);
+    if (err)
+      return std::make_pair(EmptyValue, err);
     auto value = node->Find(key);
-    if (value != EmptyValue) return std::make_pair(value, err);
+    if (value != EmptyValue)
+      return std::make_pair(value, err);
     // TODO(DH) Check shadowing...
     err = node->EachChild([&](const std::size_t, const key_type& first,
                               const key_type& last, const std::uint64_t cid) {
       if (key > first && key < last) {
         std::tie(value, err) = get(cid, key);
-        if (err) return err;
+        if (err)
+          return err;
       }
       return std::error_condition();
     });
@@ -150,12 +160,15 @@ class Tree {
     node_ptr node;
     std::error_condition err;
     std::tie(node, err) = store_->Get(id);
-    if (err) return err;
-    if (auto err = f(node, level)) return err;
+    if (err)
+      return err;
+    if (auto err = f(node, level))
+      return err;
     return node->EachChild([&](const std::size_t, const key_type&,
                                const key_type&, const std::uint64_t cid) {
       if (cid != EmptyChild)
-        if (auto err = walk(cid, level + 1, f)) return err;
+        if (auto err = walk(cid, level + 1, f))
+          return err;
       return std::error_condition();
     });
   }

@@ -18,7 +18,8 @@ template <class FwdIt, class Function>
 FwdIt for_each_line(FwdIt first, FwdIt last, Function f) {
   for (;;) {
     auto const iter = std::find(first, last, '\n');
-    if (iter == last) break;
+    if (iter == last)
+      break;
     f(std::string(first, iter));
     first = iter + 1;
   }
@@ -32,6 +33,7 @@ int main() {
     std::cerr << err.message() << std::endl;
     return 1;
   }
+
   std::vector<std::string> inserted;
   std::ios_base::sync_with_stdio(false);
   std::array<char, 1048576> str;
@@ -41,7 +43,8 @@ int main() {
     auto last = first + std::cin.gcount();
     last = for_each_line(begin(str), last,
                          [&db, &inserted](std::string const& line) {
-      if (line.find(':') != 64) throw std::invalid_argument("bad line format");
+      if (line.find(':') != 64)
+        throw std::invalid_argument("bad line format");
       auto key = unhex(line.substr(0, 64));
       auto value = unhex(line.substr(65, std::string::npos));
       if (auto err = db.Put(key, value)) {
@@ -54,13 +57,10 @@ int main() {
   auto start = high_resolution_clock::now();
   std::string value;
   for (auto const& key : inserted)
-    if (auto err = db.Get(key, &value)) std::cerr << err.message() << std::endl;
+    if (auto err = db.Get(key, &value))
+      std::cerr << err.message() << std::endl;
   auto finish = high_resolution_clock::now();
   auto dur = duration_cast<nanoseconds>(finish - start);
   std::cout << dur.count() / inserted.size() << " ns/key" << std::endl;
-  if (auto err = db.Close()) {
-    std::cerr << err.message() << std::endl;
-    return 1;
-  }
   return 0;
 }

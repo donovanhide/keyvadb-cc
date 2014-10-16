@@ -23,14 +23,15 @@ class DB {
   using tree_type = Tree<Storage::Bits>;
 
  private:
+  enum { key_length = Storage::Bits / 8 };
   key_store_type keys_;
   value_store_type values_;
   tree_type tree_;
   buffer_type buffer_;
   bool close_;
-  std::thread thread_;
-  std::condition_variable cond_;
   std::mutex mutex_;
+  std::condition_variable cond_;
+  std::thread thread_;
 
  public:
   explicit DB(std::uint32_t degree)
@@ -40,6 +41,7 @@ class DB {
         buffer_(MakeBuffer<Storage::Bits>()),
         close_(false),
         thread_(&DB::flushThread, this) {}
+
   DB(std::string valueFileName, std::string keyFileName,
      std::uint32_t blockSize)
       : keys_(Storage::CreateKeyStore(valueFileName, blockSize)),
@@ -48,16 +50,36 @@ class DB {
         buffer_(MakeBuffer<Storage::Bits>()),
         close_(false),
         thread_(&DB::flushThread, this) {}
-  DB(DB const&) = delete;
-  DB& operator=(const DB&) = delete;
+  DB(DB const &) = delete;
+  DB &operator=(const DB &) = delete;
 
-  std::error_condition Open() {
-    if (auto err = keys_->Open()) return err;
-    if (auto err = tree_.Init(false)) return err;
-    return values_->Open();
+  ~DB() {
+    close_ = true;
+    try {
+      cond_.notify_all();
+      thread_.join();
+      if (auto err = values_->Close())
+        std::cerr << err.message() << std::endl;
+      if (auto err = keys_->Close())
+        std::cerr << err.message() << std::endl;
+    } catch (std::exception &ex) {
+      std::cerr << ex.what() << std::endl;
+    }
   }
 
-  std::error_condition Get(std::string const& key, std::string* value) {
+  std::error_condition Open() {
+    if (auto err = keys_->Open())
+      return err;
+    if (auto err = tree_.Init(false))
+      return err;
+    if (auto err = values_->Open())
+      return err;
+    return std::error_condition();
+  }
+
+  std::error_condition Get(std::string const &key, std::string *value) {
+    if (key.length() != key_length)
+      return db_error::key_wrong_length;
     auto k = util::FromBytes(key);
     std::uint64_t valueId;
     try {
@@ -65,35 +87,33 @@ class DB {
     } catch (std::out_of_range) {
       std::error_condition err;
       std::tie(valueId, err) = tree_.Get(k);
-      if (err) return err;
+      if (err)
+        return err;
     }
     return values_->Get(valueId, value);
   }
 
-  std::error_condition Put(std::string const& key, std::string const& value) {
+  std::error_condition Put(std::string const &key, std::string const &value) {
+    if (key.length() != key_length)
+      return db_error::key_wrong_length;
     key_value_type kv;
-    if (auto err = values_->Set(key, value, kv)) return err;
+    if (auto err = values_->Set(key, value, kv))
+      return err;
     buffer_->Add(kv.key, kv.value);
     return std::error_condition();
-  }
-
-  std::error_condition Close() {
-    close_ = true;
-    cond_.notify_all();
-    thread_.join();
-    if (auto err = values_->Close()) return err;
-    return keys_->Close();
   }
 
  private:
   std::error_condition flush() {
     auto snapshot = buffer_->GetSnapshot();
-    if (snapshot->Size() == 0) return std::error_condition();
+    if (snapshot->Size() == 0)
+      return std::error_condition();
     std::cout << "Flushing " << snapshot->Size() << " keys" << std::endl;
     journal_type journal;
     std::error_condition err;
     std::tie(journal, err) = tree_.Add(snapshot);
-    if (err) return err;
+    if (err)
+      return err;
     journal->Commit(keys_);
     buffer_->ClearSnapshot(snapshot);
     std::cout << "Flushed " << snapshot->Size() << " keys into "
@@ -108,7 +128,9 @@ class DB {
                                  [&]() { return close_; });
       if (auto err = flush())
         std::cerr << err.message() << ":" << err.category().name() << std::endl;
-      if (stop) break;
+
+      if (stop)
+        break;
     }
     // thread exits
   }
