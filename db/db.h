@@ -28,9 +28,7 @@ class DB {
   value_store_type values_;
   tree_type tree_;
   buffer_type buffer_;
-  bool close_;
-  std::mutex mutex_;
-  std::condition_variable cond_;
+  std::atomic<bool> close_;
   std::thread thread_;
 
  public:
@@ -56,7 +54,6 @@ class DB {
   ~DB() {
     close_ = true;
     try {
-      cond_.notify_all();
       thread_.join();
       if (auto err = values_->Close())
         std::cerr << err.message() << std::endl;
@@ -122,13 +119,11 @@ class DB {
   }
 
   void flushThread() {
-    std::unique_lock<std::mutex> lock(mutex_);
     for (;;) {
-      bool stop = cond_.wait_for(lock, std::chrono::seconds(1),
-                                 [&]() { return close_; });
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+      bool stop = close_;
       if (auto err = flush())
         std::cerr << err.message() << ":" << err.category().name() << std::endl;
-
       if (stop)
         break;
     }
