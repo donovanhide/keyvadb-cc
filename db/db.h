@@ -22,6 +22,8 @@ class DB {
   using buffer_type = std::shared_ptr<Buffer<Storage::Bits>>;
   using journal_type = std::unique_ptr<Journal<Storage::Bits>>;
   using tree_type = Tree<Storage::Bits>;
+  using key_value_func =
+      std::function<void(const std::string, const std::string)>;
 
  private:
   enum { key_length = Storage::Bits / 8 };
@@ -59,14 +61,15 @@ class DB {
     close_ = true;
     try {
       thread_.join();
-      if (auto err = values_->Close()) {
-        log_.error << err.message();
-        std::cerr << err.message();
-      }
+      if (auto err = values_->Close())
+        if (log_.error)
+          log_.error << "Closing values file: " << err.message();
       if (auto err = keys_->Close())
-        std::cerr << err.message();
+        if (log_.error)
+          log_.error << "Closing keys file: " << err.message();
     } catch (std::exception &ex) {
-      std::cerr << ex.what();
+      if (log_.error)
+        log_.error << "Destructor exception: " << ex.what();
     }
   }
 
@@ -90,6 +93,8 @@ class DB {
     if (key.length() != key_length)
       return db_error::key_wrong_length;
     auto k = util::FromBytes(key);
+    if (log_.debug)
+      log_.debug << "Get: " << util::ToHex(k);
     std::uint64_t valueId;
     try {
       valueId = buffer_->Get(k);
@@ -108,9 +113,14 @@ class DB {
     key_value_type kv;
     if (auto err = values_->Set(key, value, kv))
       return err;
+    if (log_.debug)
+      log_.debug << "Put: " << util::ToHex(kv.key) << ":" << kv.value;
     buffer_->Add(kv.key, kv.value);
     return std::error_condition();
   }
+
+  // Returns keys and values in insertion order
+  std::error_condition Each(key_value_func f) { return values_->Each(f); }
 
  private:
   std::error_condition flush() {
@@ -118,16 +128,17 @@ class DB {
     if (snapshot->Size() == 0)
       return std::error_condition();
     if (log_.info)
-      log_.info << "Flushing " << snapshot->Size() << " keys";
+      log_.info << "Flushing: " << snapshot->Size() << " keys";
     journal_type journal;
     std::error_condition err;
     std::tie(journal, err) = tree_.Add(snapshot);
     if (err)
       return err;
-    journal->Commit(keys_);
+    if (auto err = journal->Commit(keys_))
+      return err;
     buffer_->ClearSnapshot(snapshot);
     if (log_.info)
-      log_.info << "Flushed " << snapshot->Size() << " keys into "
+      log_.info << "Flushed: " << snapshot->Size() << " keys into "
                 << journal->Size() << " nodes";
     return std::error_condition();
   }
@@ -138,7 +149,7 @@ class DB {
       bool stop = close_;
       if (auto err = flush())
         if (log_.error)
-          log_.error << "Flushing " << err.message() << ":"
+          log_.error << "Flushing Error: " << err.message() << ":"
                      << err.category().name();
       if (stop)
         break;

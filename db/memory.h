@@ -15,10 +15,12 @@ class MemoryValueStore : public ValueStore<BITS> {
   using util = detail::KeyUtil<BITS>;
   using key_type = typename util::key_type;
   using key_value_type = KeyValue<BITS>;
+  using key_value_func =
+      std::function<void(const std::string, const std::string)>;
 
  private:
   std::atomic_uint_fast64_t id_;
-  std::unordered_map<std::uint64_t, std::string> map_;
+  std::unordered_map<std::uint64_t, std::pair<std::string, std::string>> map_;
 
  public:
   MemoryValueStore() : id_(0) {}
@@ -31,7 +33,7 @@ class MemoryValueStore : public ValueStore<BITS> {
   std::error_condition Get(std::uint64_t const id,
                            std::string* str) const override {
     try {
-      str->assign(map_.at(id));
+      str->assign(map_.at(id).second);
     } catch (std::out_of_range const&) {
       return make_error_condition(db_error::value_not_found);
     }
@@ -41,9 +43,17 @@ class MemoryValueStore : public ValueStore<BITS> {
   std::error_condition Set(std::string const& key, std::string const& value,
                            key_value_type& kv) override {
     kv = {util::FromBytes(key), id_++};
-    map_[kv.value] = value;
+    map_[kv.value] = std::make_pair(key, value);
     return std::error_condition();
   };
+
+  std::error_condition Each(key_value_func f) const override {
+    for (uint64_t i = 0; i < id_; i++) {
+      auto kv = map_.at(i);
+      f(kv.first, kv.second);
+    }
+    return std::error_condition();
+  }
 };
 
 template <std::uint32_t BITS>

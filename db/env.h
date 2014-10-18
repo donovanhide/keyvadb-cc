@@ -50,26 +50,30 @@ class PosixRandomAccessFile : public RandomAccessFile {
   std::pair<std::size_t, std::error_condition> ReadAt(
       std::uint64_t const pos, std::string& str) const override {
     ssize_t ret = ::pread(fd_, &str[0], str.size(), pos);
-    if (ret < 0) return std::make_pair(0, check_error(ret));
+    if (ret < 0)
+      return std::make_pair(0, check_error(ret));
     return std::make_pair(ret, std::error_condition());
   };
 
   std::pair<std::size_t, std::error_condition> WriteAt(
       std::string const& str, std::uint64_t const pos) override {
     ssize_t ret = ::pwrite(fd_, str.data(), str.size(), pos);
-    if (ret < 0) return std::make_pair(0, check_error(ret));
+    if (ret < 0)
+      return std::make_pair(0, check_error(ret));
     return std::make_pair(ret, std::error_condition());
   };
 
   std::error_condition Size(std::atomic_uint_fast64_t& size) const override {
     struct stat sb;
-    if (auto err = check_error(::fstat(fd_, &sb))) return err;
+    if (auto err = check_error(::fstat(fd_, &sb)))
+      return err;
     size = sb.st_size;
     return std::error_condition();
   };
 
   std::error_condition Close() override {
-    if (auto err = Sync()) return err;
+    if (auto err = Sync())
+      return err;
     return check_error(::close(fd_));
   };
 
@@ -84,7 +88,8 @@ class PosixRandomAccessFile : public RandomAccessFile {
   }
 
   std::error_condition check_error(ssize_t err) const {
-    if (err < 0) return std::generic_category().default_error_condition(errno);
+    if (err < 0)
+      return std::generic_category().default_error_condition(errno);
     return std::error_condition();
   }
 };

@@ -18,6 +18,8 @@ template <std::uint32_t BITS>
 class ValueStore {
   using key_value_type = KeyValue<BITS>;
   using value_result = std::pair<key_value_type, std::error_condition>;
+  using key_value_func =
+      std::function<void(const std::string, const std::string)>;
 
  public:
   virtual ~ValueStore() = default;
@@ -27,8 +29,9 @@ class ValueStore {
   virtual std::error_condition Clear() = 0;  // Not threadsafe
 
   virtual std::error_condition Get(std::uint64_t const, std::string*) const = 0;
-  virtual std::error_condition Set(std::string const& key, std::string const&,
+  virtual std::error_condition Set(std::string const& , std::string const&,
                                    key_value_type&) = 0;
+  virtual std::error_condition Each(key_value_func) const = 0;
 };
 
 template <std::uint32_t BITS>
@@ -45,9 +48,9 @@ class KeyStore {
   virtual std::error_condition Close() = 0;  // Not threadsafe
   virtual std::error_condition Clear() = 0;  // Not threadsafe
 
-  virtual node_ptr New(key_type const& start, const key_type& end) = 0;
-  virtual node_result Get(std::uint64_t const id) const = 0;
-  virtual std::error_condition Set(node_ptr const& node) = 0;
+  virtual node_ptr New(key_type const&, const key_type&) = 0;
+  virtual node_result Get(std::uint64_t const) const = 0;
+  virtual std::error_condition Set(node_ptr const&) = 0;
   virtual std::uint64_t Size() const = 0;
 };
 
