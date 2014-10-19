@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <string>
+#include <unordered_map>
+#include <mutex>
 #include <utility>
 #include "db/store.h"
 #include "db/env.h"
@@ -138,6 +140,8 @@ class FileKeyStore : public KeyStore<BITS> {
   const std::uint32_t degree_;
   file_type file_;
   std::atomic_uint_fast64_t size_;
+  std::unordered_map<std::uint64_t, node_ptr> cache_;
+  mutable std::mutex cache_lock_;
 
  public:
   FileKeyStore(std::size_t const block_size, file_type& file)
@@ -157,16 +161,24 @@ class FileKeyStore : public KeyStore<BITS> {
   }
 
   std::error_condition Close() override { return file_->Close(); }
-  node_ptr New(const key_type& first, const key_type& last) override {
+
+  node_ptr New(std::uint32_t const level, key_type const& first,
+               key_type const& last) override {
     size_ += block_size_;
-    return std::make_shared<node_type>(size_ - block_size_, degree_, first,
-                                       last);
+    return std::make_shared<node_type>(size_ - block_size_, level, degree_,
+                                       first, last);
   }
 
   node_result Get(std::uint64_t const id) const {
+    {
+      std::lock_guard<std::mutex> lock(cache_lock_);
+      auto found = cache_.find(id);
+      if (found != cache_.end())
+        return std::make_pair(found->second, std::error_condition());
+    }
     std::string str;
     str.resize(block_size_);
-    auto node = std::make_shared<node_type>(id, degree_, 0, 1);
+    auto node = std::make_shared<node_type>(id, 0, degree_, 0, 1);
     std::size_t bytesRead;
     std::error_condition err;
     std::tie(bytesRead, err) = file_->ReadAt(id, str);
@@ -183,6 +195,10 @@ class FileKeyStore : public KeyStore<BITS> {
   }
 
   std::error_condition Set(node_ptr const& node) {
+    if (node->Level() < 4) {
+      std::lock_guard<std::mutex> lock(cache_lock_);
+      cache_[node->Id()] = node;
+    }
     std::string str;
     str.resize(block_size_);
     node->Write(str);

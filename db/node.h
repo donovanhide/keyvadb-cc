@@ -39,6 +39,7 @@ class Node {
 
  private:
   std::uint64_t id_;
+  std::uint32_t level_;
   std::uint32_t degree_;
   key_type first_;
   key_type last_;
@@ -47,9 +48,10 @@ class Node {
  public:
   key_values_type keys;
 
-  Node(std::uint64_t const id, std::uint32_t degree, key_type const& first,
-       key_type const& last)
+  Node(std::uint64_t const id, std::uint32_t const level,
+       std::uint32_t const degree, key_type const& first, key_type const& last)
       : id_(id),
+        level_(level),
         degree_(degree),
         first_(first),
         last_(last),
@@ -62,6 +64,7 @@ class Node {
 
   std::size_t Write(std::string& str) const {
     size_t pos = 0;
+    pos += string_replace<std::uint32_t>(level_, pos, str);
     pos += util::WriteBytes(first_, pos, str);
     pos += util::WriteBytes(last_, pos, str);
     for (auto const& kv : keys) {
@@ -75,6 +78,7 @@ class Node {
 
   std::size_t Read(std::string const& str) {
     size_t pos = 0;
+    pos += string_read<std::uint32_t>(str, pos, level_);
     pos += util::ReadBytes(str, pos, first_);
     pos += util::ReadBytes(str, pos, last_);
     for (auto& kv : keys) {
@@ -167,6 +171,7 @@ class Node {
   }
 
   constexpr std::uint64_t Id() const { return id_; }
+  constexpr std::uint32_t Level() const { return level_; }
   constexpr key_type First() const { return first_; }
   constexpr key_type Last() const { return last_; }
 

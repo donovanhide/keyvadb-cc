@@ -15,9 +15,10 @@ TYPED_TEST_CASE(NodeTest, NodeTypes);
 TYPED_TEST(NodeTest, Node) {
   auto first = this->policy_.MakeKey(1);
   auto last = this->policy_.FromHex('F');
-  ASSERT_THROW((Node<256>(0, 84, last, first)), std::domain_error);
-  Node<256> node(0, 84, first, last);
+  ASSERT_THROW((Node<256>(0, 10, 84, last, first)), std::domain_error);
+  Node<256> node(0, 10, 84, first, last);
   ASSERT_TRUE(node.IsSane());
+  ASSERT_EQ(10UL, node.Level());
   ASSERT_EQ(84UL, node.Degree());
   ASSERT_EQ(84UL, node.EmptyChildCount());
   ASSERT_EQ(83UL, node.MaxKeys());
@@ -31,7 +32,7 @@ TYPED_TEST(NodeTest, CopyAssign) {
   auto last = this->policy_.FromHex('F');
   auto middle = this->policy_.FromHex(
       "7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF9");
-  Node<256> node(0, 16, first, last);
+  Node<256> node(0, 10, 16, first, last);
   ASSERT_TRUE(node.IsSane());
   auto copyNode = Node<256>(node);
   ASSERT_TRUE(copyNode.IsSane());

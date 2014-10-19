@@ -48,7 +48,8 @@ class KeyStore {
   virtual std::error_condition Close() = 0;  // Not threadsafe
   virtual std::error_condition Clear() = 0;  // Not threadsafe
 
-  virtual node_ptr New(key_type const&, const key_type&) = 0;
+  virtual node_ptr New(std::uint32_t const level, key_type const&,
+                       const key_type&) = 0;
   virtual node_result Get(std::uint64_t const) const = 0;
   virtual std::error_condition Set(node_ptr const&) = 0;
   virtual std::uint64_t Size() const = 0;

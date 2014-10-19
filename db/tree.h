@@ -39,7 +39,7 @@ class Tree {
     std::tie(root, err) = store_->Get(rootId);
     if (!err)
       return err;
-    root = store_->New(firstRootKey(), lastRootKey());
+    root = store_->New(0, firstRootKey(), lastRootKey());
     if (addSynthetics)
       root->AddSyntheticKeyValues();
     return store_->Set(root);
@@ -111,7 +111,7 @@ class Tree {
             if (!snapshot->ContainsRange(first, last))
               return std::error_condition();
             if (cid == EmptyChild) {
-              auto child = store_->New(first, last);
+              auto child = store_->New(level, first, last);
               delta.SetChild(i, child->Id());
               return add(child, level + 1, snapshot, journal);
             } else {

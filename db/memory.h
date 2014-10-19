@@ -86,8 +86,9 @@ class MemoryKeyStore : public KeyStore<BITS> {
     return std::error_condition();
   }
 
-  node_ptr New(const key_type& first, const key_type& last) override {
-    return std::make_shared<node_type>(id_++, degree_, first, last);
+  node_ptr New(std::uint32_t const level, key_type const& first,
+               key_type const& last) override {
+    return std::make_shared<node_type>(id_++, level, degree_, first, last);
   }
 
   node_result Get(std::uint64_t const id) const override {
