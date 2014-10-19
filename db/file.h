@@ -16,7 +16,7 @@ class FileValueStore : public ValueStore<BITS> {
   using key_value_type = KeyValue<BITS>;
   using file_type = std::unique_ptr<RandomAccessFile>;
   using key_value_func =
-      std::function<void(const std::string, const std::string)>;
+      std::function<void(std::string const&, std::string const&)>;
 
  private:
   enum { Bytes = BITS / 8 };
@@ -81,8 +81,8 @@ class FileValueStore : public ValueStore<BITS> {
     str.replace(pos, key.size(), key);
     pos += key.size();
     str.replace(pos, value.size(), value);
-    size_ += length;
-    kv = {util::FromBytes(key), size_ - length};
+    auto newSize = (size_ += length);
+    kv = {util::FromBytes(key), newSize - length};
     std::size_t bytesWritten;
     std::error_condition err;
     std::tie(bytesWritten, err) = file_->WriteAt(str, kv.value);

@@ -19,11 +19,11 @@ class DB {
   using key_store_type = typename Storage::KeyStorage;
   using value_store_type = typename Storage::ValueStorage;
   using key_value_type = KeyValue<Storage::Bits>;
-  using buffer_type = std::shared_ptr<Buffer<Storage::Bits>>;
+  using buffer_type = Buffer<Storage::Bits>;
   using journal_type = std::unique_ptr<Journal<Storage::Bits>>;
   using tree_type = Tree<Storage::Bits>;
   using key_value_func =
-      std::function<void(const std::string, const std::string)>;
+      std::function<void(std::string const &, std::string const &)>;
 
  private:
   enum { key_length = Storage::Bits / 8 };
@@ -41,7 +41,7 @@ class DB {
         keys_(Storage::CreateKeyStore(degree)),
         values_(Storage::CreateValueStore()),
         tree_(tree_type(keys_)),
-        buffer_(MakeBuffer<Storage::Bits>()),
+        buffer_(),
         close_(false),
         thread_(&DB::flushThread, this) {}
 
@@ -51,11 +51,11 @@ class DB {
         keys_(Storage::CreateKeyStore(valueFileName, blockSize)),
         values_(Storage::CreateValueStore(keyFileName)),
         tree_(tree_type(keys_)),
-        buffer_(MakeBuffer<Storage::Bits>()),
+        buffer_(),
         close_(false),
         thread_(&DB::flushThread, this) {}
   DB(DB const &) = delete;
-  DB &operator=(const DB &) = delete;
+  DB &operator=(DB const &) = delete;
 
   ~DB() {
     close_ = true;
@@ -77,7 +77,7 @@ class DB {
   std::error_condition Open() {
     if (auto err = keys_->Open())
       return err;
-    if (auto err = tree_.Init(false))
+    if (auto err = tree_.Init(true))
       return err;
     return values_->Open();
   }
@@ -85,6 +85,8 @@ class DB {
   // Not threadsafe
   std::error_condition Clear() {
     if (auto err = keys_->Clear())
+      return err;
+    if (auto err = tree_.Init(true))
       return err;
     return values_->Clear();
   }
@@ -96,9 +98,7 @@ class DB {
     if (log_.debug)
       log_.debug << "Get: " << util::ToHex(k);
     std::uint64_t valueId;
-    try {
-      valueId = buffer_->Get(k);
-    } catch (std::out_of_range) {
+    if (!buffer_.Get(k, &valueId)) {
       std::error_condition err;
       std::tie(valueId, err) = tree_.Get(k);
       if (err)
@@ -113,9 +113,9 @@ class DB {
     key_value_type kv;
     if (auto err = values_->Set(key, value, kv))
       return err;
+    buffer_.Add(kv.key, kv.value);
     if (log_.debug)
       log_.debug << "Put: " << util::ToHex(kv.key) << ":" << kv.value;
-    buffer_->Add(kv.key, kv.value);
     return std::error_condition();
   }
 
@@ -124,7 +124,7 @@ class DB {
 
  private:
   std::error_condition flush() {
-    auto snapshot = buffer_->GetSnapshot();
+    auto snapshot = buffer_.GetSnapshot();
     if (snapshot->Size() == 0)
       return std::error_condition();
     if (log_.info)
@@ -136,7 +136,7 @@ class DB {
       return err;
     if (auto err = journal->Commit(keys_))
       return err;
-    buffer_->ClearSnapshot(snapshot);
+    buffer_.ClearSnapshot(snapshot);
     if (log_.info)
       log_.info << "Flushed: " << snapshot->Size() << " keys into "
                 << journal->Size() << " nodes";

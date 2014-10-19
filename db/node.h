@@ -126,16 +126,19 @@ class Node {
         if (!keys.at(i - 1).IsZero() && !keys.at(i).IsZero())
           err = f(i, keys.at(i - 1).key, keys.at(i).key, children_.at(i));
       }
-      if (err) return err;
+      if (err)
+        return err;
     }
     return err;
   }
 
-  std::uint64_t Find(key_type const& key) const {
+  bool Find(key_type const& key, std::uint64_t* value) const {
     auto found = std::find_if(
         keys.cbegin(), keys.cend(),
         [&key](key_value_type const& kv) { return kv.key == key; });
-    return (found != keys.cend()) ? found->value : EmptyValue;
+    if (found != keys.cend())
+      *value = found->value;
+    return found != keys.cend();
   }
 
   constexpr key_value_type GetKeyValue(std::size_t const i) const {
@@ -147,15 +150,19 @@ class Node {
   }
 
   bool IsSane() const {
-    if (first_ >= last_) return false;
-    if (!std::is_sorted(keys.cbegin(), keys.cend())) return false;
+    if (first_ >= last_)
+      return false;
+    if (!std::is_sorted(keys.cbegin(), keys.cend()))
+      return false;
     for (std::size_t i = 1; i < Degree() - 1; i++) {
-      if (!keys.at(i).IsZero() && keys.at(i) == keys.at(i - 1)) return false;
+      if (!keys.at(i).IsZero() && keys.at(i) == keys.at(i - 1))
+        return false;
       if (!keys.at(i).IsZero() &&
           (keys.at(i).key <= first_ || keys.at(i).key >= last_))
         return false;
     }
-    if (EmptyKeyCount() > 0 && EmptyChildCount() != Degree()) return false;
+    if (EmptyKeyCount() > 0 && EmptyChildCount() != Degree())
+      return false;
     return true;
   }
 

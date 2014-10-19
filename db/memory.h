@@ -16,11 +16,12 @@ class MemoryValueStore : public ValueStore<BITS> {
   using key_type = typename util::key_type;
   using key_value_type = KeyValue<BITS>;
   using key_value_func =
-      std::function<void(const std::string, const std::string)>;
+      std::function<void(std::string const&, std::string const&)>;
 
  private:
   std::atomic_uint_fast64_t id_;
   std::unordered_map<std::uint64_t, std::pair<std::string, std::string>> map_;
+  mutable std::mutex lock_;
 
  public:
   MemoryValueStore() : id_(0) {}
@@ -32,6 +33,7 @@ class MemoryValueStore : public ValueStore<BITS> {
   }
   std::error_condition Get(std::uint64_t const id,
                            std::string* str) const override {
+    std::lock_guard<std::mutex> lock(lock_);
     try {
       str->assign(map_.at(id).second);
     } catch (std::out_of_range const&) {
@@ -43,11 +45,13 @@ class MemoryValueStore : public ValueStore<BITS> {
   std::error_condition Set(std::string const& key, std::string const& value,
                            key_value_type& kv) override {
     kv = {util::FromBytes(key), id_++};
+    std::lock_guard<std::mutex> lock(lock_);
     map_[kv.value] = std::make_pair(key, value);
     return std::error_condition();
   };
 
   std::error_condition Each(key_value_func f) const override {
+    std::lock_guard<std::mutex> lock(lock_);
     for (uint64_t i = 0; i < id_; i++) {
       auto kv = map_.at(i);
       f(kv.first, kv.second);
@@ -69,6 +73,7 @@ class MemoryKeyStore : public KeyStore<BITS> {
   std::uint32_t degree_;
   std::atomic_uint_fast64_t id_;
   std::unordered_map<std::uint64_t, node_ptr> map_;
+  mutable std::mutex lock_;
 
  public:
   explicit MemoryKeyStore(std::uint32_t const degree)
@@ -86,6 +91,7 @@ class MemoryKeyStore : public KeyStore<BITS> {
   }
 
   node_result Get(std::uint64_t const id) const override {
+    std::lock_guard<std::mutex> lock(lock_);
     try {
       auto node = map_.at(id);
       return std::make_pair(node, std::error_condition());
@@ -96,6 +102,7 @@ class MemoryKeyStore : public KeyStore<BITS> {
   }
 
   std::error_condition Set(node_ptr const& node) override {
+    std::lock_guard<std::mutex> lock(lock_);
     map_[node->Id()] = node;
     return std::error_condition();
   }

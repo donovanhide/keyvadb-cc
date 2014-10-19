@@ -15,7 +15,9 @@ class DBTestBase : public ::testing::Test {
       keys.emplace_back(util::ToBytes(key));
     return keys;
   }
+
   void CompareKeys(std::string const& a, std::string const& b) {
+    // ASSERT_EQ(a, b);
     ASSERT_EQ(util::ToHex(util::FromBytes(a)), util::ToHex(util::FromBytes(b)));
   }
 };
@@ -66,18 +68,30 @@ TYPED_TEST(DBTest, General) {
 }
 
 TYPED_TEST(DBTest, Bulk) {
-  auto keys = this->RandomKeys(25000, 0);
-  // Use key as value
-  for (auto const& key : keys) ASSERT_FALSE(this->db.Put(key, key));
-  std::string value;
-  for (auto const& key : keys) {
-    ASSERT_FALSE(this->db.Get(key, &value));
-    ASSERT_EQ(key, value);
-  }
-  std::size_t i = 0;
-  this->db.Each([&](std::string const& key, std::string const& value) {
-    this->CompareKeys(key, value);
-    this->CompareKeys(keys[i], key);
-    i++;
-  });
+  auto f = [&](auto keys) {
+    // Use key as value
+    for (auto const& key : keys) ASSERT_FALSE(this->db.Put(key, key));
+    std::string value;
+    std::size_t i = 0;
+    for (auto const& key : keys) {
+      ASSERT_FALSE(this->db.Get(key, &value));
+      this->CompareKeys(key, keys[i]);
+      this->CompareKeys(key, value);
+      i++;
+    }
+    // i = 0;
+    // this->db.Each([&](std::string const& key, std::string const& value) {
+    //   this->CompareKeys(key, value);
+    //   this->CompareKeys(keys[i], key);
+    //   i++;
+    // });
+  };
+  std::thread t1(f, this->RandomKeys(10000, 0));
+  std::thread t2(f, this->RandomKeys(10000, 1));
+  std::thread t3(f, this->RandomKeys(10000, 2));
+  std::thread t4(f, this->RandomKeys(10000, 3));
+  t1.join();
+  t2.join();
+  t3.join();
+  t4.join();
 }

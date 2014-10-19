@@ -40,13 +40,13 @@ TYPED_TEST(StoreTest, TreeOperations) {
   const std::size_t rounds = 4;
   for (std::size_t i = 0; i < 2; i++) {
     for (std::size_t j = 0; j < rounds; j++) {
-      auto buffer = MakeBuffer<256>();
+      Buffer<256> buffer;
       // Use j as seed
-      buffer->FillRandom(n, j);
-      ASSERT_EQ(n, buffer->Size());
+      buffer.FillRandom(n, j);
+      ASSERT_EQ(n, buffer.Size());
       Tree<256>::journal_ptr journal;
       std::error_condition err;
-      std::tie(journal, err) = tree.Add(buffer->GetSnapshot());
+      std::tie(journal, err) = tree.Add(buffer.GetSnapshot());
       ASSERT_FALSE(err);
       checkTree(tree);
       ASSERT_FALSE(journal->Commit(this->keys_));
@@ -59,7 +59,7 @@ TYPED_TEST(StoreTest, TreeOperations) {
         ASSERT_EQ(journal->Size(), 0UL);
         ASSERT_EQ(0UL, journal->TotalInsertions());
       }
-      auto snapshot = buffer->GetSnapshot();
+      auto snapshot = buffer.GetSnapshot();
       for (auto const& kv : snapshot->keys) checkValue(tree, kv);
 
       // std::cout << *journal << "----" << std::endl;

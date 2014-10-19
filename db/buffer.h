@@ -24,15 +24,22 @@ class Buffer {
   mutable std::mutex lock_;
 
  public:
+  Buffer() : lock_() {}
+  Buffer(Buffer const&) = delete;
+  Buffer& operator=(Buffer) = delete;
+
   std::size_t Add(key_type const& key, uint64_t const value) {
     std::lock_guard<std::mutex> lock(lock_);
     map_.emplace(key, value);
     return map_.size();
   }
 
-  std::uint64_t Get(key_type const& key) const {
+  bool Get(key_type const& key, uint64_t* value) const {
     std::lock_guard<std::mutex> lock(lock_);
-    return map_.at(key);
+    auto v = map_.find(key);
+    if (v != map_.end())
+      *value = v->second;
+    return v != map_.end();
   }
 
   bool Remove(key_value_type const& key) {
@@ -62,10 +69,5 @@ class Buffer {
     for (std::size_t i = 0; i < n; i++) Add(keys[i], i + 1);
   }
 };
-
-template <uint32_t BITS>
-std::shared_ptr<Buffer<BITS>> MakeBuffer() {
-  return std::make_shared<Buffer<BITS>>();
-}
 
 }  // namespace keyvadb

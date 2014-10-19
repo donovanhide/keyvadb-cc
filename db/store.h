@@ -19,7 +19,7 @@ class ValueStore {
   using key_value_type = KeyValue<BITS>;
   using value_result = std::pair<key_value_type, std::error_condition>;
   using key_value_func =
-      std::function<void(const std::string, const std::string)>;
+      std::function<void(std::string const&, std::string const&)>;
 
  public:
   virtual ~ValueStore() = default;
@@ -29,7 +29,7 @@ class ValueStore {
   virtual std::error_condition Clear() = 0;  // Not threadsafe
 
   virtual std::error_condition Get(std::uint64_t const, std::string*) const = 0;
-  virtual std::error_condition Set(std::string const& , std::string const&,
+  virtual std::error_condition Set(std::string const&, std::string const&,
                                    key_value_type&) = 0;
   virtual std::error_condition Each(key_value_func) const = 0;
 };

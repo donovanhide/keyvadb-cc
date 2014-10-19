@@ -139,16 +139,16 @@ class Tree {
     std::tie(node, err) = store_->Get(id);
     if (err)
       return std::make_pair(EmptyValue, err);
-    auto value = node->Find(key);
-    if (value != EmptyValue)
+    std::uint64_t value = 0;
+    if (node->Find(key, &value))
       return std::make_pair(value, err);
-    // TODO(DH) Check shadowing...
     err = node->EachChild([&](const std::size_t, const key_type& first,
                               const key_type& last, const std::uint64_t cid) {
       if (key > first && key < last) {
+        if (cid == EmptyChild)
+          return make_error_condition(db_error::key_not_found);
         std::tie(value, err) = get(cid, key);
-        if (err)
-          return err;
+        return err;
       }
       return std::error_condition();
     });

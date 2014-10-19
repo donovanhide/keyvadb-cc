@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+#include <mutex>
 #include <functional>
 
 namespace keyvadb {
@@ -35,6 +36,7 @@ class StandardLog {
     std::string prefix_;
     std::ostringstream buffer_;
     std::reference_wrapper<std::ostream> stream_;
+
     explicit ScopedOutput(std::string const& prefix, std::ostream& stream)
         : prefix_(prefix), stream_(stream) {}
     ScopedOutput(ScopedOutput& out)
@@ -42,8 +44,11 @@ class StandardLog {
       buffer_.swap(out.buffer_);
     }
     ~ScopedOutput() {
-      if (buffer_.str().length() > 0)
+      if (buffer_.str().length() > 0) {
+        static std::mutex lock;
+        std::lock_guard<std::mutex> guard(lock);
         stream_.get() << prefix_ << ": " << buffer_.str() << std::endl;
+      }
     }
 
     template <class T>

@@ -88,7 +88,8 @@ struct KeyUtil {
   }
 
   static key_type Distance(key_type const& a, key_type const& b) {
-    if (a > b) return a - b;
+    if (a > b)
+      return a - b;
     return b - a;
   }
 

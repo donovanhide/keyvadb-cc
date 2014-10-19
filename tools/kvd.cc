@@ -27,13 +27,16 @@ FwdIt for_each_line(FwdIt first, FwdIt last, Function f) {
 }
 
 int main() {
-  DB<FileStoragePolicy<256>> db("kvd.keys", "kvd.values", 4096);
+  DB<FileStoragePolicy<256>, StandardLog> db("kvd.keys", "kvd.values", 4096);
   // DB<MemoryStoragePolicy<256>> db(85);
   if (auto err = db.Open()) {
     std::cerr << err.message() << std::endl;
     return 1;
   }
-
+  if (auto err = db.Clear()) {
+    std::cerr << err.message() << std::endl;
+    return 1;
+  }
   std::vector<std::string> inserted;
   std::ios_base::sync_with_stdio(false);
   std::array<char, 1048576> str;
