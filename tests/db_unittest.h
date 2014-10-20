@@ -1,6 +1,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <random>
 #include "tests/common.h"
 #include "db/db.h"
 
@@ -69,16 +70,21 @@ TYPED_TEST(DBTest, General) {
 }
 
 TYPED_TEST(DBTest, Bulk) {
+  std::uniform_int_distribution<size_t> value_length(32, 20000);
+  std::mt19937 rng;
+  rng.seed(0);
   auto keys = this->RandomKeys(40000, 0);
   auto f = [&](std::size_t const first, std::size_t const last) {
     // Use key as value
     for (std::size_t i = first; i < last; i++) {
-      ASSERT_FALSE(this->db.Put(keys[i], keys[i]));
+      auto value = keys[i];
+      value.resize(value_length(rng));
+      ASSERT_FALSE(this->db.Put(keys[i], value));
     }
     std::string value;
     for (std::size_t i = first; i < last; i++) {
       ASSERT_FALSE(this->db.Get(keys[i], &value));
-      this->CompareKeys(keys[i], value);
+      this->CompareKeys(keys[i], value.substr(0, 32));
     }
   };
   std::thread t1(f, 0, 10000);
@@ -92,7 +98,8 @@ TYPED_TEST(DBTest, Bulk) {
   std::set<std::string> unique(keys.begin(), keys.end());
   std::uint32_t i = 0;
   this->db.Each([&](std::string const& key, std::string const& value) {
-    this->CompareKeys(key, value);
+    std::cout << value.length() << std::endl;
+    this->CompareKeys(key, value.substr(0, 32));
     ASSERT_TRUE(unique.find(key) != unique.end());
     i++;
   });
