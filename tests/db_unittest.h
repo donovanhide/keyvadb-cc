@@ -1,5 +1,6 @@
 #include <string>
 #include <vector>
+#include <set>
 #include "tests/common.h"
 #include "db/db.h"
 
@@ -68,30 +69,32 @@ TYPED_TEST(DBTest, General) {
 }
 
 TYPED_TEST(DBTest, Bulk) {
-  auto f = [&](auto keys) {
+  auto keys = this->RandomKeys(40000, 0);
+  auto f = [&](std::size_t const first, std::size_t const last) {
     // Use key as value
-    for (auto const& key : keys) ASSERT_FALSE(this->db.Put(key, key));
-    std::string value;
-    std::size_t i = 0;
-    for (auto const& key : keys) {
-      ASSERT_FALSE(this->db.Get(key, &value));
-      this->CompareKeys(key, keys[i]);
-      this->CompareKeys(key, value);
-      i++;
+    for (std::size_t i = first; i < last; i++) {
+      ASSERT_FALSE(this->db.Put(keys[i], keys[i]));
     }
-    // i = 0;
-    // this->db.Each([&](std::string const& key, std::string const& value) {
-    //   this->CompareKeys(key, value);
-    //   this->CompareKeys(keys[i], key);
-    //   i++;
-    // });
+    std::string value;
+    for (std::size_t i = first; i < last; i++) {
+      ASSERT_FALSE(this->db.Get(keys[i], &value));
+      this->CompareKeys(keys[i], value);
+    }
   };
-  std::thread t1(f, this->RandomKeys(10000, 0));
-  std::thread t2(f, this->RandomKeys(10000, 1));
-  std::thread t3(f, this->RandomKeys(10000, 2));
-  std::thread t4(f, this->RandomKeys(10000, 3));
+  std::thread t1(f, 0, 10000);
+  std::thread t2(f, 10000, 20000);
+  std::thread t3(f, 20000, 30000);
+  std::thread t4(f, 30000, 40000);
   t1.join();
   t2.join();
   t3.join();
   t4.join();
+  std::set<std::string> unique(keys.begin(), keys.end());
+  std::uint32_t i = 0;
+  this->db.Each([&](std::string const& key, std::string const& value) {
+    this->CompareKeys(key, value);
+    ASSERT_TRUE(unique.find(key) != unique.end());
+    i++;
+  });
+  ASSERT_EQ(40000UL, i);
 }
