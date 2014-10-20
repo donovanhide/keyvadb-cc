@@ -36,7 +36,7 @@ class DB {
   std::thread thread_;
 
  public:
-  explicit DB(std::uint32_t degree)
+  explicit DB(std::uint32_t const degree)
       : log_(Log{}),
         keys_(Storage::CreateKeyStore(degree)),
         values_(Storage::CreateValueStore()),
@@ -45,10 +45,10 @@ class DB {
         close_(false),
         thread_(&DB::flushThread, this) {}
 
-  DB(std::string valueFileName, std::string keyFileName,
-     std::uint32_t blockSize)
+  DB(std::string const &valueFileName, std::string const &keyFileName,
+     std::uint32_t const blockSize, std::uint32_t const cacheLevels)
       : log_(Log{}),
-        keys_(Storage::CreateKeyStore(valueFileName, blockSize)),
+        keys_(Storage::CreateKeyStore(valueFileName, blockSize, cacheLevels)),
         values_(Storage::CreateValueStore(keyFileName)),
         tree_(tree_type(keys_)),
         buffer_(),

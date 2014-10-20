@@ -27,7 +27,7 @@ FwdIt for_each_line(FwdIt first, FwdIt last, Function f) {
 }
 
 int main() {
-  DB<FileStoragePolicy<256>> db("kvd.keys", "kvd.values", 4096);
+  DB<FileStoragePolicy<256>> db("kvd.keys", "kvd.values", 4096, 3);
   // DB<FileStoragePolicy<256>, StandardLog> db("kvd.keys", "kvd.values", 4096);
   // DB<MemoryStoragePolicy<256>> db(85);
   if (auto err = db.Open()) {

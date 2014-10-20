@@ -60,7 +60,7 @@ class StoreTest<FileStoragePolicy<BITS>>
 
  protected:
   void InitStores() override {
-    this->keys_ = policy_type::CreateKeyStore("test.keys", 4096);
+    this->keys_ = policy_type::CreateKeyStore("test.keys", 4096, 3);
     this->values_ = policy_type::CreateValueStore("test.values");
   }
 };
