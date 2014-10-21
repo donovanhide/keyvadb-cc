@@ -14,7 +14,7 @@ CPPFLAGS += -I$(TEST_DIR) -I. -isystem $(TEST_DIR)/gtest
 CXXFLAGS += ${cxxflags.${BUILD}} -Wall -Wextra -Wpedantic -std=c++1y -DGTEST_LANG_CXX11=1
 LDFLAGS += -lpthread
 
-all : keyvadb_unittests kvd
+all : keyvadb_unittests kvd dump
 
 valgrind : all
 	valgrind --dsymutil=yes --track-origins=yes ./keyvadb_unittests
@@ -38,4 +38,10 @@ kvd.o : $(TOOLS_DIR)/kvd.cc db/*.h
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $(TOOLS_DIR)/kvd.cc
 
 kvd : kvd.o
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
+
+dump.o : $(TOOLS_DIR)/dump.cc 
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $(TOOLS_DIR)/dump.cc
+
+dump : dump.o
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)

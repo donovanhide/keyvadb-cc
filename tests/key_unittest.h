@@ -64,7 +64,7 @@ TYPED_TEST(KeyTest, General) {
   ASSERT_EQ(last, l2);
   // Read/Write string
   std::string s;
-  s.resize(this->policy_.Bits * 2);
+  s.resize(this->policy_.Bits/8);
   this->policy_.WriteBytes(first, 0, s);
   auto readKey = this->policy_.MakeKey(0);
   this->policy_.ReadBytes(s, 0, readKey);

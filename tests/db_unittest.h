@@ -98,7 +98,6 @@ TYPED_TEST(DBTest, Bulk) {
   std::set<std::string> unique(keys.begin(), keys.end());
   std::uint32_t i = 0;
   this->db.Each([&](std::string const& key, std::string const& value) {
-    std::cout << value.length() << std::endl;
     this->CompareKeys(key, value.substr(0, 32));
     ASSERT_TRUE(unique.find(key) != unique.end());
     i++;
