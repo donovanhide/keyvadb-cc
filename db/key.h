@@ -50,8 +50,9 @@ struct KeyUtil {
   static std::string ToBytes(key_type const& key) {
     auto bytes = key.backend().limbs();
     auto length = key.backend().size() * sizeof(*key.backend().limbs());
-    auto s = std::string(reinterpret_cast<const char*>(bytes), length);
-    return s;
+    auto str = std::string(reinterpret_cast<const char*>(bytes), length);
+    std::reverse(str.begin(), str.end());
+    return str;
   }
 
   static key_type FromBytes(std::string const& str) {
@@ -59,7 +60,8 @@ struct KeyUtil {
     auto length = str.size() / sizeof(*key.backend().limbs());
     key.backend().resize(length, length);
     auto bytes = key.backend().limbs();
-    std::memcpy(bytes, str.data(), str.size());
+    std::reverse_copy(str.cbegin(), str.cend(), reinterpret_cast<char*>(bytes));
+    key.backend().normalize();
     return key;
   }
 

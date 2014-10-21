@@ -28,7 +28,8 @@ class Journal {
     // write deepest nodes first so that no parent can refer
     // to a non-existent child
     for (auto it = deltas_.crbegin(), end = deltas_.crend(); it != end; ++it)
-      if (auto err = store->Set(it->second.Current())) return err;
+      if (auto err = store->Set(it->second.Current()))
+        return err;
     return std::error_condition();
   }
 

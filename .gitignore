@@ -7,3 +7,5 @@ keyvadb_unittests
 kvd
 *.keys
 *.values
+
+dump

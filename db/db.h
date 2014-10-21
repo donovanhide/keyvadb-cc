@@ -95,14 +95,17 @@ class DB {
     if (key.length() != key_length)
       return db_error::key_wrong_length;
     auto k = util::FromBytes(key);
-    if (log_.debug)
-      log_.debug << "Get: " << util::ToHex(k);
     std::uint64_t valueId;
     if (!buffer_.Get(k, &valueId)) {
       std::error_condition err;
       std::tie(valueId, err) = tree_.Get(k);
       if (err)
         return err;
+      if (log_.debug)
+        log_.debug << "Get: " << util::ToHex(k) << ":" << valueId;
+    } else {
+      if (log_.debug)
+        log_.debug << "Buffer Get: " << util::ToHex(k) << ":" << valueId;
     }
     return values_->Get(valueId, value);
   }

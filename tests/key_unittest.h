@@ -1,8 +1,10 @@
+#include <boost/algorithm/hex.hpp>
 #include <string>
 #include "tests/common.h"
 #include "db/key.h"
 
 using namespace keyvadb;
+using boost::algorithm::unhex;
 
 template <typename T>
 class KeyTest : public ::testing::Test {
@@ -64,9 +66,18 @@ TYPED_TEST(KeyTest, General) {
   ASSERT_EQ(last, l2);
   // Read/Write string
   std::string s;
-  s.resize(this->policy_.Bits/8);
+  s.resize(this->policy_.Bits / 8);
   this->policy_.WriteBytes(first, 0, s);
   auto readKey = this->policy_.MakeKey(0);
   this->policy_.ReadBytes(s, 0, readKey);
   ASSERT_EQ(first, readKey);
+}
+
+TEST(KeyTest, RoundTrip) {
+  using util = detail::KeyUtil<256>;
+  using key_type = typename util::key_type;
+  std::string in(
+      "1E0DABB20AAAC3498DE92C73EA14E0FAB24BE2F53E503A0ACEB73AD54DB8DBF5");
+  auto key = util::FromBytes(unhex(in));
+  ASSERT_EQ(in, util::ToHex(key));
 }

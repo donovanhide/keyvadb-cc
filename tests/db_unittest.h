@@ -70,27 +70,30 @@ TYPED_TEST(DBTest, General) {
 }
 
 TYPED_TEST(DBTest, Bulk) {
-  std::uniform_int_distribution<size_t> value_length(32, 20000);
+  std::uniform_int_distribution<size_t> value_length(32, 8000);
   std::mt19937 rng;
   rng.seed(0);
-  auto keys = this->RandomKeys(40000, 0);
+  const std::size_t numKeys = 40000;
+  auto keys = this->RandomKeys(numKeys, 0);
   auto f = [&](std::size_t const first, std::size_t const last) {
-    // Use key as value
+    std::string value;
     for (std::size_t i = first; i < last; i++) {
-      auto value = keys[i];
+      ASSERT_TRUE(this->db.Get(keys[i], &value) == db_error::key_not_found);
+      // Use key as value
+      value = keys[i];
       value.resize(value_length(rng));
       ASSERT_FALSE(this->db.Put(keys[i], value));
     }
-    std::string value;
+
     for (std::size_t i = first; i < last; i++) {
       ASSERT_FALSE(this->db.Get(keys[i], &value));
       this->CompareKeys(keys[i], value.substr(0, 32));
     }
   };
-  std::thread t1(f, 0, 10000);
-  std::thread t2(f, 10000, 20000);
-  std::thread t3(f, 20000, 30000);
-  std::thread t4(f, 30000, 40000);
+  std::thread t1(f, 0, (numKeys / 4) * 1);
+  std::thread t2(f, (numKeys / 4) * 1, (numKeys / 4) * 2);
+  std::thread t3(f, (numKeys / 4) * 2, (numKeys / 4) * 3);
+  std::thread t4(f, (numKeys / 4) * 3, numKeys);
   t1.join();
   t2.join();
   t3.join();
@@ -102,5 +105,5 @@ TYPED_TEST(DBTest, Bulk) {
     ASSERT_TRUE(unique.find(key) != unique.end());
     i++;
   });
-  ASSERT_EQ(40000UL, i);
+  ASSERT_EQ(numKeys, i);
 }

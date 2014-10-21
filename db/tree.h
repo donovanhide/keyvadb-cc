@@ -142,16 +142,21 @@ class Tree {
     std::uint64_t value = 0;
     if (node->Find(key, &value))
       return std::make_pair(value, err);
+    // TODO(DH) This needs early breaking to be efficient
+    bool found = false;
     err = node->EachChild([&](const std::size_t, const key_type& first,
                               const key_type& last, const std::uint64_t cid) {
       if (key > first && key < last) {
         if (cid == EmptyChild)
           return make_error_condition(db_error::key_not_found);
+        found = true;
         std::tie(value, err) = get(cid, key);
         return err;
       }
       return std::error_condition();
     });
+    if (!found)
+      err = db_error::key_not_found;
     return std::make_pair(value, err);
   }
 

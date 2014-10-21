@@ -46,7 +46,8 @@ TYPED_TEST(StoreTest, TreeOperations) {
       ASSERT_EQ(n, buffer.Size());
       Tree<256>::journal_ptr journal;
       std::error_condition err;
-      std::tie(journal, err) = tree.Add(buffer.GetSnapshot());
+      auto snapshot = buffer.GetSnapshot();
+      std::tie(journal, err) = tree.Add(snapshot);
       ASSERT_FALSE(err);
       checkTree(tree);
       ASSERT_FALSE(journal->Commit(this->keys_));
@@ -59,9 +60,7 @@ TYPED_TEST(StoreTest, TreeOperations) {
         ASSERT_EQ(journal->Size(), 0UL);
         ASSERT_EQ(0UL, journal->TotalInsertions());
       }
-      auto snapshot = buffer.GetSnapshot();
       for (auto const& kv : snapshot->keys) checkValue(tree, kv);
-
       // std::cout << *journal << "----" << std::endl;
     }
   }
