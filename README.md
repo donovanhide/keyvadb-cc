@@ -1,5 +1,57 @@
 #KeyvaDB
 
+
+##Values File
+```
+uint64_t Length of length + key length + value length
+key_type Key
+string   Value
+... repeats
+```
+
+##Keys file
+```
+uint32_t Level
+key_type First key
+key_type Last key
+	key_type Key
+	uint64_t Value file offset
+	... repeats
+	uint64_t Child node id
+	... repeats
+... repeats
+```
+
+##Journal File
+
+Compressed node format:
+```
+uint64_t Node Id
+uint32_t Level
+key_type First key
+key_type Last key
+uint32_t Number of non-empty key values
+uint32_t Number of non-empty children
+	uint32_t key index
+	key_type Key #0
+	uint64_t Value #0
+	... repeats
+	uint32_t child index
+	uint64_t Child #0
+	... repeats
+```
+
+File format:
+```
+uint64_t Expected length of journal file
+uint64_t Previous keys file length
+uint64_t Previous values file length
+uint32_t Number of changed nodes
+Compressed node #0
+Compressed node #1
+.... repeats
+```
+
 ##Commit Process
 
 * Database has two buffers, active and commit.
@@ -11,13 +63,14 @@
 	* If item does not already exist:
  		* Assign value file offset.
  		* Store changed and original nodes in memory.
+* Create journal file.
 * Write all keys and values to values file at assigned offsets (writev or pwrite).
-* Write all key file length and original nodes to on-disk journal, storing only indexed non-empty key values to save disk space.
 * Write changed nodes to keys file.
 * Delete journal.
-* Write new value file length to value file header.
 
 ##Recovery Process
-
-* If value file length does not equal length in value file header, truncate to length in value file header.
-* If journal file exists write all original nodes to keys file and truncate to previous key file length and delete journal.
+* If journal file exists and expected length == actual length
+	* Truncate values file to previous length
+	* Truncate keys file to previous length
+	* Write all original nodes to keys file
+* Delete journal
