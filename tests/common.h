@@ -8,6 +8,8 @@
 #include "db/tree.h"
 #include "db/memory.h"
 #include "db/file.h"
+#include "db/buffer.h"
+#include "db/journal.h"
 
 using namespace keyvadb;
 
@@ -17,9 +19,19 @@ class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits> {
   using node_ptr = std::shared_ptr<Node<T::Bits>>;
   using key_value_type = KeyValue<T::Bits>;
   using tree_type = Tree<T::Bits>;
+  using tree_ptr = std::unique_ptr<tree_type>;
+  using cache_type = NodeCache<T::Bits>;
+  using cache_ptr = std::unique_ptr<cache_type>;
+  using journal_type = Journal<T::Bits>;
+  using journal_ptr = std::unique_ptr<journal_type>;
+  using buffer_type = Buffer<T::Bits>;
+  using buffer_ptr = std::unique_ptr<buffer_type>;
+
   typename T::KeyStorage keys_;
   typename T::ValueStorage values_;
+  
   virtual void InitStores() {}
+  
   virtual void SetUp() {
     InitStores();
     ASSERT_FALSE(keys_->Open());
@@ -27,15 +39,58 @@ class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits> {
     ASSERT_FALSE(values_->Open());
     ASSERT_FALSE(values_->Clear());
   }
+  
   virtual void TearDown() {
     ASSERT_FALSE(keys_->Close());
     ASSERT_FALSE(values_->Close());
   }
+  
   node_ptr EmptyNode() { return nullptr; }
+  
   key_value_type EmptyKeyValue() { return key_value_type(); }
+  
   // Fills a binary key with garbage hex
   std::string HexString(char const c) { return std::string(T::Bits / 8, c); }
-  tree_type GetTree() { return tree_type(keys_); }
+  
+  tree_ptr GetTree(std::size_t cacheSize) {
+    return std::make_unique<tree_type>(keys_, cacheSize);
+  }
+  
+  cache_ptr GetCache(std::size_t size) {
+    return std::make_unique<cache_type>(size);
+  }
+
+  journal_ptr GetJournal(){
+    return std::make_unique<journal_type>();
+  }
+
+  buffer_ptr GetBuffer(){
+    return std::make_unique<buffer_type>();
+  }
+
+  void checkTree(tree_ptr const& tree) {
+    bool sane;
+    std::error_condition err;
+    std::tie(sane, err) = tree->IsSane();
+    ASSERT_FALSE(err);
+    ASSERT_TRUE(sane);
+  }
+
+  void checkCount(tree_ptr const& tree, std::size_t const expected) {
+    std::size_t count;
+    std::error_condition err;
+    std::tie(count, err) = tree->NonSyntheticKeyCount();
+    ASSERT_FALSE(err);
+    ASSERT_EQ(expected, count);
+  }
+
+  void checkValue(tree_ptr const& tree, KeyValue<256> const kv) {
+    std::uint64_t value;
+    std::error_condition err;
+    std::tie(value, err) = tree->Get(kv.key);
+    ASSERT_FALSE(err);
+    ASSERT_EQ(kv.value, value);
+  }
 };
 
 template <typename T>
@@ -60,7 +115,7 @@ class StoreTest<FileStoragePolicy<BITS>>
 
  protected:
   void InitStores() override {
-    this->keys_ = policy_type::CreateKeyStore("test.keys", 4096, 3);
+    this->keys_ = policy_type::CreateKeyStore("test.keys", 4096);
     this->values_ = policy_type::CreateValueStore("test.values");
   }
 };

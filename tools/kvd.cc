@@ -27,7 +27,8 @@ FwdIt for_each_line(FwdIt first, FwdIt last, Function f) {
 }
 
 int main() {
-  DB<FileStoragePolicy<256>> db("kvd.keys", "kvd.values", 4096, 3);
+  DB<FileStoragePolicy<256>> db("kvd.keys", "kvd.values", 4096,
+                                1024 * 1024 * 1024 / 4096);
   // DB<FileStoragePolicy<256>, StandardLog> db("kvd.keys", "kvd.values", 4096);
   // DB<MemoryStoragePolicy<256>> db(85);
   if (auto err = db.Open()) {
@@ -41,8 +42,10 @@ int main() {
   std::vector<std::string> inserted;
   std::ios_base::sync_with_stdio(false);
   std::array<char, 1048576> str;
+  auto start = high_resolution_clock::now();
   auto first = begin(str);
-  for (; !std::cin.eof();) {
+  std::size_t i = 0;
+  for (; !std::cin.eof(); i++) {
     std::cin.read(first, std::distance(first, end(str)));
     auto last = first + std::cin.gcount();
     last = for_each_line(begin(str), last,
@@ -58,13 +61,18 @@ int main() {
     });
     first = std::copy(last, end(str), begin(str));
   }
-  auto start = high_resolution_clock::now();
+  auto finish = high_resolution_clock::now();
+  auto dur = duration_cast<nanoseconds>(finish - start);
+  std::cout << "Puts: " << dur.count() / inserted.size() << " ns/key"
+            << std::endl;
+  start = high_resolution_clock::now();
   std::string value;
   for (auto const& key : inserted)
     if (auto err = db.Get(key, &value))
-      std::cerr << err.message() << std::endl;
-  auto finish = high_resolution_clock::now();
-  auto dur = duration_cast<nanoseconds>(finish - start);
-  std::cout << dur.count() / inserted.size() << " ns/key" << std::endl;
+      std::cerr << hex(key) << ":" << err.message() << std::endl;
+  finish = high_resolution_clock::now();
+  dur = duration_cast<nanoseconds>(finish - start);
+  std::cout << "Gets: " << dur.count() / inserted.size() << " ns/key"
+            << std::endl;
   return 0;
 }

@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <string>
+#include <map>
 #include <utility>
 #include <system_error>
 #include "db/key.h"

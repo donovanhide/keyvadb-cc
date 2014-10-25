@@ -7,9 +7,14 @@
 #include <utility>
 #include "db/node.h"
 #include "db/store.h"
+#include "db/cache.h"
 #include "db/delta.h"
 
 namespace keyvadb {
+
+// Forward Declaration
+template <uint32_t BITS>
+class Journal;
 
 template <uint32_t BITS>
 class Tree {
@@ -21,16 +26,20 @@ class Tree {
   using node_ptr = std::shared_ptr<Node<BITS>>;
   using node_func =
       std::function<std::error_condition(node_ptr, std::uint32_t)>;
-  using journal_ptr = std::unique_ptr<Journal<BITS>>;
+  using journal_type = Journal<BITS>;
+  using journal_ptr = std::unique_ptr<journal_type>;
   using snapshot_ptr = std::unique_ptr<Snapshot<BITS>>;
   using delta_type = Delta<BITS>;
+  using cache_type = NodeCache<BITS>;
 
  private:
   static const uint64_t rootId = 0;
   store_ptr store_;
+  mutable cache_type cache_;
 
  public:
-  explicit Tree(store_ptr const& store) : store_(store) {}
+  Tree(store_ptr const& store, std::size_t const cacheSize)
+      : store_(store), cache_(cacheSize) {}
 
   // Build root node if not already present
   std::error_condition Init(bool const addSynthetics) {
@@ -42,6 +51,7 @@ class Tree {
     root = store_->New(0, firstRootKey(), lastRootKey());
     if (addSynthetics)
       root->AddSyntheticKeyValues();
+    cache_.Add(root);
     return store_->Set(root);
   }
 
@@ -51,7 +61,7 @@ class Tree {
   // The nodes are copies of the ones in the store (ie. copy on write)
   std::pair<journal_ptr, std::error_condition> Add(
       snapshot_ptr const& snapshot) const {
-    auto journal = MakeJournal<BITS>();
+    auto journal = std::make_unique<journal_type>();
     node_ptr root;
     std::error_condition err;
     std::tie(root, err) = store_->Get(rootId);
@@ -63,7 +73,19 @@ class Tree {
 
   std::pair<std::uint64_t, std::error_condition> Get(
       key_type const& key) const {
-    return get(rootId, key);
+    auto node = cache_.Get(key);
+    if (!node) {
+      std::error_condition err;
+      std::tie(node, err) = store_->Get(rootId);
+      if (err)
+        return std::make_pair(EmptyValue, err);
+    }
+    return get(node, key);
+  }
+
+  std::error_condition Update(const node_ptr& node) {
+    cache_.Add(node);
+    return store_->Set(node);
   }
 
   std::pair<bool, std::error_condition> IsSane() const {
@@ -133,28 +155,30 @@ class Tree {
   }
 
   std::pair<std::uint64_t, std::error_condition> get(
-      std::uint64_t const id, key_type const& key) const {
-    node_ptr node;
-    std::error_condition err;
-    std::tie(node, err) = store_->Get(id);
-    if (err)
-      return std::make_pair(EmptyValue, err);
+      node_ptr const& node, key_type const& key) const {
     std::uint64_t value = 0;
     if (node->Find(key, &value))
-      return std::make_pair(value, err);
+      return std::make_pair(value, std::error_condition());
     // TODO(DH) This needs early breaking to be efficient
     bool found = false;
-    err = node->EachChild([&](const std::size_t, const key_type& first,
-                              const key_type& last, const std::uint64_t cid) {
-      if (key > first && key < last) {
-        if (cid == EmptyChild)
-          return make_error_condition(db_error::key_not_found);
-        found = true;
-        std::tie(value, err) = get(cid, key);
-        return err;
-      }
-      return std::error_condition();
-    });
+    auto err =
+        node->EachChild([&](const std::size_t, const key_type& first,
+                            const key_type& last, const std::uint64_t cid) {
+          if (key > first && key < last) {
+            if (cid == EmptyChild)
+              return make_error_condition(db_error::key_not_found);
+            found = true;
+            node_ptr node;
+            std::error_condition err;
+            std::tie(node, err) = store_->Get(cid);
+            if (err)
+              return err;
+            cache_.Add(node);
+            std::tie(value, err) = get(node, key);
+            return err;
+          }
+          return std::error_condition();
+        });
     if (!found)
       err = db_error::key_not_found;
     return std::make_pair(value, err);

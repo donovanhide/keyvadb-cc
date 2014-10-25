@@ -10,11 +10,16 @@
 
 namespace keyvadb {
 
+// Forward declaration
+template <std::uint32_t BITS>
+class Tree;
+
 template <std::uint32_t BITS>
 class Journal {
   using delta_type = Delta<BITS>;
   using node_ptr = std::shared_ptr<Node<BITS>>;
   using key_store_ptr = std::shared_ptr<KeyStore<BITS>>;
+  using tree_type = Tree<BITS>;
 
  private:
   std::multimap<std::uint32_t, delta_type> deltas_;
@@ -24,11 +29,11 @@ class Journal {
     deltas_.emplace(level, delta);
   }
 
-  std::error_condition Commit(key_store_ptr const& store) {
+  std::error_condition Commit(tree_type& tree) {
     // write deepest nodes first so that no parent can refer
     // to a non-existent child
     for (auto it = deltas_.crbegin(), end = deltas_.crend(); it != end; ++it)
-      if (auto err = store->Set(it->second.Current()))
+      if (auto err = tree.Update(it->second.Current()))
         return err;
     return std::error_condition();
   }

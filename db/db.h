@@ -40,17 +40,17 @@ class DB {
       : log_(Log{}),
         keys_(Storage::CreateKeyStore(degree)),
         values_(Storage::CreateValueStore()),
-        tree_(tree_type(keys_)),
+        tree_(keys_, 0),
         buffer_(),
         close_(false),
         thread_(&DB::flushThread, this) {}
 
   DB(std::string const &valueFileName, std::string const &keyFileName,
-     std::uint32_t const blockSize, std::uint32_t const cacheLevels)
+     std::uint32_t const blockSize, std::uint32_t const cacheSize)
       : log_(Log{}),
-        keys_(Storage::CreateKeyStore(valueFileName, blockSize, cacheLevels)),
+        keys_(Storage::CreateKeyStore(valueFileName, blockSize)),
         values_(Storage::CreateValueStore(keyFileName)),
-        tree_(tree_type(keys_)),
+        tree_(keys_, cacheSize),
         buffer_(),
         close_(false),
         thread_(&DB::flushThread, this) {}
@@ -137,7 +137,7 @@ class DB {
     std::tie(journal, err) = tree_.Add(snapshot);
     if (err)
       return err;
-    if (auto err = journal->Commit(keys_))
+    if (auto err = journal->Commit(tree_))
       return err;
     buffer_.ClearSnapshot(snapshot);
     if (log_.info)

@@ -3,9 +3,9 @@
 #include <algorithm>
 #include <string>
 #include <unordered_map>
-#include <mutex>
 #include <utility>
 #include "db/store.h"
+#include "db/cache.h"
 #include "db/env.h"
 #include "db/encoding.h"
 
@@ -137,20 +137,13 @@ class FileKeyStore : public KeyStore<BITS> {
 
  private:
   const std::uint32_t block_size_;
-  const std::uint32_t cache_levels_;
   const std::uint32_t degree_;
   file_type file_;
   std::atomic_uint_fast64_t size_;
-  std::unordered_map<std::uint64_t, node_ptr> cache_;
-  mutable std::mutex cache_lock_;
 
  public:
-  FileKeyStore(std::uint32_t const block_size, std::uint32_t const cache_levels,
-               file_type& file)
-      : block_size_(block_size),
-        cache_levels_(cache_levels),
-        degree_(84),
-        file_(std::move(file)) {}
+  FileKeyStore(std::uint32_t const block_size, file_type& file)
+      : block_size_(block_size), degree_(84), file_(std::move(file)) {}
   FileKeyStore(const FileKeyStore&) = delete;
   FileKeyStore& operator=(const FileKeyStore&) = delete;
 
@@ -175,12 +168,6 @@ class FileKeyStore : public KeyStore<BITS> {
   }
 
   node_result Get(std::uint64_t const id) const {
-    {
-      std::lock_guard<std::mutex> lock(cache_lock_);
-      auto found = cache_.find(id);
-      if (found != cache_.end())
-        return std::make_pair(found->second, std::error_condition());
-    }
     std::string str;
     str.resize(block_size_);
     auto node = std::make_shared<node_type>(id, 0, degree_, 0, 1);
@@ -200,10 +187,6 @@ class FileKeyStore : public KeyStore<BITS> {
   }
 
   std::error_condition Set(node_ptr const& node) {
-    if (node->Level() < cache_levels_) {
-      std::lock_guard<std::mutex> lock(cache_lock_);
-      cache_[node->Id()] = node;
-    }
     std::string str;
     str.resize(block_size_);
     node->Write(str);
@@ -226,13 +209,12 @@ struct FileStoragePolicy {
   using ValueStorage = std::shared_ptr<ValueStore<BITS>>;
   enum { Bits = BITS };
   static KeyStorage CreateKeyStore(std::string const& filename,
-                                   std::uint32_t const blockSize,
-                                   std::uint32_t const cacheLevels) {
+                                   std::uint32_t const blockSize) {
     // Put ifdef here!
     auto file = std::unique_ptr<RandomAccessFile>(
         std::make_unique<PosixRandomAccessFile>(filename));
     // endif
-    return std::make_shared<FileKeyStore<BITS>>(blockSize, cacheLevels, file);
+    return std::make_shared<FileKeyStore<BITS>>(blockSize, file);
   }
   static ValueStorage CreateValueStore(std::string const& filename) {
     // Put ifdef here!
