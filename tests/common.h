@@ -21,7 +21,6 @@ class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits> {
   using tree_type = Tree<T::Bits>;
   using tree_ptr = std::unique_ptr<tree_type>;
   using cache_type = NodeCache<T::Bits>;
-  using cache_ptr = std::unique_ptr<cache_type>;
   using journal_type = Journal<T::Bits>;
   using journal_ptr = std::unique_ptr<journal_type>;
   using buffer_type = Buffer<T::Bits>;
@@ -29,44 +28,36 @@ class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits> {
 
   typename T::KeyStorage keys_;
   typename T::ValueStorage values_;
-  
+  cache_type cache_;
+
   virtual void InitStores() {}
-  
+
   virtual void SetUp() {
     InitStores();
     ASSERT_FALSE(keys_->Open());
     ASSERT_FALSE(keys_->Clear());
     ASSERT_FALSE(values_->Open());
     ASSERT_FALSE(values_->Clear());
+    cache_.Reset();
   }
-  
+
   virtual void TearDown() {
     ASSERT_FALSE(keys_->Close());
     ASSERT_FALSE(values_->Close());
   }
-  
+
   node_ptr EmptyNode() { return nullptr; }
-  
+
   key_value_type EmptyKeyValue() { return key_value_type(); }
-  
+
   // Fills a binary key with garbage hex
   std::string HexString(char const c) { return std::string(T::Bits / 8, c); }
-  
-  tree_ptr GetTree(std::size_t cacheSize) {
-    return std::make_unique<tree_type>(keys_, cacheSize);
-  }
-  
-  cache_ptr GetCache(std::size_t size) {
-    return std::make_unique<cache_type>(size);
-  }
 
-  journal_ptr GetJournal(){
-    return std::make_unique<journal_type>();
-  }
+  tree_ptr GetTree() { return std::make_unique<tree_type>(keys_, cache_); }
 
-  buffer_ptr GetBuffer(){
-    return std::make_unique<buffer_type>();
-  }
+  journal_ptr GetJournal() { return std::make_unique<journal_type>(); }
+
+  buffer_ptr GetBuffer() { return std::make_unique<buffer_type>(); }
 
   void checkTree(tree_ptr const& tree) {
     bool sane;

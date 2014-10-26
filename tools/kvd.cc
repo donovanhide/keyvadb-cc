@@ -27,9 +27,10 @@ FwdIt for_each_line(FwdIt first, FwdIt last, Function f) {
 }
 
 int main() {
-  DB<FileStoragePolicy<256>> db("kvd.keys", "kvd.values", 4096,
-                                1024 * 1024 * 1024 / 4096);
-  // DB<FileStoragePolicy<256>, StandardLog> db("kvd.keys", "kvd.values", 4096);
+  DB<FileStoragePolicy<256>> db("kvd.keys", "kvd.values", 4096, 2000);
+  // 1024 * 1024 * 1024 / 4096);
+  // DB<FileStoragePolicy<256>, StandardLog> db("kvd.keys", "kvd.values",
+  // 4096);
   // DB<MemoryStoragePolicy<256>> db(85);
   if (auto err = db.Open()) {
     std::cerr << err.message() << std::endl;
@@ -55,7 +56,7 @@ int main() {
       auto key = unhex(line.substr(0, 64));
       auto value = unhex(line.substr(65, std::string::npos));
       if (auto err = db.Put(key, value)) {
-        std::cerr << err.message() << std::endl;
+        std::cout << err.message() << std::endl;
       }
       inserted.push_back(key);
     });
@@ -69,7 +70,7 @@ int main() {
   std::string value;
   for (auto const& key : inserted)
     if (auto err = db.Get(key, &value))
-      std::cerr << hex(key) << ":" << err.message() << std::endl;
+      std::cout << hex(key) << ":" << err.message() << std::endl;
   finish = high_resolution_clock::now();
   dur = duration_cast<nanoseconds>(finish - start);
   std::cout << "Gets: " << dur.count() / inserted.size() << " ns/key"

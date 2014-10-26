@@ -5,7 +5,7 @@
 using namespace keyvadb;
 
 TYPED_TEST(StoreTest, TreeOperations) {
-  auto tree = this->GetTree(0);
+  auto tree = this->GetTree();
   ASSERT_FALSE(tree->Init(false));
   // Check root has been created
   this->checkTree(tree);
@@ -40,5 +40,5 @@ TYPED_TEST(StoreTest, TreeOperations) {
       // std::cout << *journal << "----" << std::endl;
     }
   }
-  // std::cout << tree;
+  std::cout << this->cache_;
 }

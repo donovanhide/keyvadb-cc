@@ -35,11 +35,11 @@ class Tree {
  private:
   static const uint64_t rootId = 0;
   store_ptr store_;
-  mutable cache_type cache_;
+  cache_type& cache_;
 
  public:
-  Tree(store_ptr const& store, std::size_t const cacheSize)
-      : store_(store), cache_(cacheSize) {}
+  Tree(store_ptr const& store, cache_type& cache)
+      : store_(store), cache_(cache) {}
 
   // Build root node if not already present
   std::error_condition Init(bool const addSynthetics) {
@@ -67,7 +67,7 @@ class Tree {
     std::tie(root, err) = store_->Get(rootId);
     if (err)
       return std::make_pair(std::move(journal), err);
-    err = add(root, 0, snapshot, journal);
+    err = add(root, 1, snapshot, journal);
     return std::make_pair(std::move(journal), err);
   }
 
@@ -171,8 +171,9 @@ class Tree {
             node_ptr node;
             std::error_condition err;
             std::tie(node, err) = store_->Get(cid);
-            if (err)
+            if (err) {
               return err;
+            }
             cache_.Add(node);
             std::tie(value, err) = get(node, key);
             return err;
@@ -181,6 +182,7 @@ class Tree {
         });
     if (!found)
       err = db_error::key_not_found;
+
     return std::make_pair(value, err);
   }
 

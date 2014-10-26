@@ -176,9 +176,10 @@ class FileKeyStore : public KeyStore<BITS> {
     std::tie(bytesRead, err) = file_->ReadAt(id, str);
     if (err)
       return std::make_pair(node_ptr(), err);
-    if (bytesRead == 0)
+    if (bytesRead == 0) {
       return std::make_pair(node_ptr(),
                             make_error_condition(db_error::key_not_found));
+    }
     if (bytesRead != block_size_)
       return std::make_pair(node_ptr(),
                             make_error_condition(db_error::short_read));

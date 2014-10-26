@@ -44,10 +44,10 @@ TYPED_TEST(StoreTest, SetAndGetValues) {
 }
 
 TYPED_TEST(StoreTest, Cache) {
-  auto cache = this->GetCache(2);
+  this->cache_.SetMaxSize(2);
   auto key1 = this->FromHex('1');
   auto key2 = this->FromHex('2');
   auto key3 = this->FromHex('3');
   auto key4 = this->FromHex('4');
-  cache->Add(this->keys_->New(0, key1, key4));
+  this->cache_.Add(this->keys_->New(0, key1, key4));
 }

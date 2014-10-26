@@ -22,6 +22,7 @@ class DB {
   using buffer_type = Buffer<Storage::Bits>;
   using journal_type = std::unique_ptr<Journal<Storage::Bits>>;
   using tree_type = Tree<Storage::Bits>;
+  using cache_type = NodeCache<Storage::Bits>;
   using key_value_func =
       std::function<void(std::string const &, std::string const &)>;
 
@@ -30,6 +31,7 @@ class DB {
   Log log_;
   key_store_type keys_;
   value_store_type values_;
+  cache_type cache_;
   tree_type tree_;
   buffer_type buffer_;
   std::atomic<bool> close_;
@@ -40,20 +42,23 @@ class DB {
       : log_(Log{}),
         keys_(Storage::CreateKeyStore(degree)),
         values_(Storage::CreateValueStore()),
-        tree_(keys_, 0),
+        cache_(),
+        tree_(keys_, cache_),
         buffer_(),
         close_(false),
         thread_(&DB::flushThread, this) {}
 
   DB(std::string const &valueFileName, std::string const &keyFileName,
-     std::uint32_t const blockSize, std::uint32_t const cacheSize)
+     std::uint32_t const blockSize, std::size_t const cacheSize)
       : log_(Log{}),
         keys_(Storage::CreateKeyStore(valueFileName, blockSize)),
         values_(Storage::CreateValueStore(keyFileName)),
-        tree_(keys_, cacheSize),
+        tree_(keys_, cache_),
         buffer_(),
         close_(false),
-        thread_(&DB::flushThread, this) {}
+        thread_(&DB::flushThread, this) {
+    cache_.SetMaxSize(cacheSize);
+  }
   DB(DB const &) = delete;
   DB &operator=(DB const &) = delete;
 
@@ -154,6 +159,7 @@ class DB {
         if (log_.error)
           log_.error << "Flushing Error: " << err.message() << ":"
                      << err.category().name();
+      std::cout << cache_;
       if (stop)
         break;
     }

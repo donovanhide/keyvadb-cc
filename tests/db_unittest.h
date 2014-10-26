@@ -42,7 +42,7 @@ template <std::uint32_t BITS>
 class DBTest<FileStoragePolicy<BITS>> : public DBTestBase<BITS> {
  public:
   DB<FileStoragePolicy<BITS>> db;
-  DBTest() : db("test.keys", "test.values", 4096, 3) {}
+  DBTest() : db("test.keys", "test.values", 4096, 1024 * 1024 * 1024 / 4096) {}
   void SetUp() {
     ASSERT_FALSE(db.Open());
     ASSERT_FALSE(db.Clear());
