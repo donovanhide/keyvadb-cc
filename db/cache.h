@@ -6,7 +6,6 @@
 #include <utility>
 #include <algorithm>
 #include <mutex>
-#include <limits>
 #include "db/key.h"
 
 namespace keyvadb {
@@ -32,7 +31,7 @@ class NodeCache {
   using index_value = typename index_type::value_type;
 
  private:
-  std::size_t maxSize_ = 0;
+  std::uint64_t maxSize_ = 0;
   std::uint64_t hits_ = 0;
   std::uint64_t misses_ = 0;
   std::uint64_t inserts_ = 0;
@@ -41,7 +40,7 @@ class NodeCache {
   std::mutex lock_;
 
  public:
-  void SetMaxSize(std::size_t maxSize) {
+  void SetMaxSize(std::uint64_t maxSize) {
     std::lock_guard<std::mutex> lock(lock_);
     maxSize_ = maxSize;
   }
@@ -61,16 +60,10 @@ class NodeCache {
     std::lock_guard<std::mutex> lock(lock_);
     auto it = nodes_.left.find(key_level_pair{node->Level(), node->First()});
     if (it != nodes_.left.end()) {
-      std::cout << "Update: " << node->Level() << ":"
-                << util::ToHex(node->First()) << ":"
-                << util::ToHex(node->Last()) << std::endl;
       updates_++;
       it->second = node;
       nodes_.right.relocate(nodes_.right.end(), nodes_.project_right(it));
     } else {
-      std::cout << "Insert: " << node->Level() << ":"
-                << util::ToHex(node->First()) << ":"
-                << util::ToHex(node->Last()) << std::endl;
       inserts_++;
       nodes_.insert(index_value({node->Level(), node->First()}, node));
       if (nodes_.size() > maxSize_)
@@ -79,31 +72,25 @@ class NodeCache {
   }
 
   node_ptr Get(key_type const& key) {
-    if (maxSize_ == 0)
-      return node_ptr();
     using util = detail::KeyUtil<BITS>;
     std::lock_guard<std::mutex> lock(lock_);
-    std::cout << "Get: " << util::ToHex(key) << std::endl;
-    auto level = std::numeric_limits<std::uint32_t>::max();
-    for (;;) {
-      std::cout << "Search: " << level << ":" << util::ToHex(key) << std::endl;
-      auto it = nodes_.left.upper_bound(key_level_pair{level, key - 1});
+    if (maxSize_ == 0 || nodes_.size() == 0)
+      return node_ptr();
+    auto level = nodes_.left.begin()->first.first + 1;
+    for (; level > 0; level--) {
+      auto it = nodes_.left.upper_bound(key_level_pair{level, key});
       if (it != nodes_.left.begin())
         it--;
       if (it->second->Level() > level)
         break;
-      std::cout << "Hit:" << it->second->Level() << ":"
-                << util::ToHex(it->second->First()) << ":" << util::ToHex(key)
-                << ":" << util::ToHex(it->second->Last()) << std::endl;
       if (it->second->First() < key && it->second->Last() > key) {
         hits_++;
         nodes_.right.relocate(nodes_.right.end(), nodes_.project_right(it));
         return it->second;
       }
-      level = it->second->Level() - 1;
     }
     misses_++;
-    std::cout << "Miss:" << util::ToHex(key) << std::endl;
+    // std::cout << "Miss:" << util::ToHex(key) << std::endl;
     return node_ptr();
   }
 

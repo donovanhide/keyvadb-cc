@@ -49,7 +49,7 @@ class DB {
         thread_(&DB::flushThread, this) {}
 
   DB(std::string const &valueFileName, std::string const &keyFileName,
-     std::uint32_t const blockSize, std::size_t const cacheSize)
+     std::uint32_t const blockSize, std::uint64_t const cacheSize)
       : log_(Log{}),
         keys_(Storage::CreateKeyStore(valueFileName, blockSize)),
         values_(Storage::CreateValueStore(keyFileName)),
@@ -147,7 +147,7 @@ class DB {
     buffer_.ClearSnapshot(snapshot);
     if (log_.info)
       log_.info << "Flushed: " << snapshot->Size() << " keys into "
-                << journal->Size() << " nodes";
+                << journal->Size() << " nodes" << cache_;
     return std::error_condition();
   }
 
@@ -159,7 +159,7 @@ class DB {
         if (log_.error)
           log_.error << "Flushing Error: " << err.message() << ":"
                      << err.category().name();
-      std::cout << cache_;
+      // std::cout << cache_;
       if (stop)
         break;
     }
