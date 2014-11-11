@@ -63,11 +63,11 @@ TYPED_TEST(StoreTest, Cache)
     this->cache_.Add(root);
     ASSERT_FALSE(this->cache_.Get(first));
     // The key 0000...0001 is the first key that can possibly be found
-    ASSERT_EQ(this->cache_.Get(first+1), root);
+    ASSERT_EQ(this->cache_.Get(first + 1), root);
     this->cache_.Add(firstChild);
-    ASSERT_EQ(this->cache_.Get(key1+1), firstChild);
+    ASSERT_EQ(this->cache_.Get(key1 + 1), firstChild);
     this->cache_.Add(secondChild);
-    ASSERT_EQ(this->cache_.Get(key2+1), secondChild);
+    ASSERT_EQ(this->cache_.Get(key2 + 1), secondChild);
     // root now evicted
     ASSERT_FALSE(this->cache_.Get(first + 1));
 }
