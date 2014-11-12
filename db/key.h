@@ -36,6 +36,7 @@ struct KeyUtil
         HexChars = BITS / 4,
         Bytes = BITS / 8
     };
+
     static key_type MakeKey(const std::uint64_t num) { return key_type(num); }
 
     static key_type FromHex(char const c)

@@ -9,6 +9,7 @@
 #include "db/memory.h"
 #include "db/file.h"
 #include "db/buffer.h"
+#include "db/bufferv2.h"
 #include "db/journal.h"
 
 using namespace keyvadb;

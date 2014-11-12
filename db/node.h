@@ -8,7 +8,6 @@
 #include <algorithm>
 #include "db/key.h"
 #include "db/encoding.h"
-#include "db/snapshot.h"
 #include "db/journal.h"
 
 namespace keyvadb
@@ -33,7 +32,6 @@ class Node
     using child_func = std::function<
         std::error_condition(const std::size_t, const key_type&,
                              const key_type&, const std::uint64_t)>;
-    using snapshot_ptr = std::unique_ptr<Snapshot<BITS>>;
     using node_ptr = std::shared_ptr<Node<BITS>>;
     using iterator = typename key_values_type::iterator;
     using const_iterator = typename key_values_type::const_iterator;

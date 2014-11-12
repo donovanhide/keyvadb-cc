@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <set>
 #include <algorithm>
+#include "db/snapshot.h"
 
 namespace keyvadb
 {

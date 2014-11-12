@@ -52,7 +52,7 @@ TYPED_TEST(StoreTest, Cache)
     auto last = this->FromHex('F');
     auto key1 = this->FromHex('1');
     auto key2 = this->FromHex('2');
-    auto key3 = this->FromHex('3');
+    // auto key3 = this->FromHex('3');
     auto key4 = this->FromHex('4');
     auto key5 = this->FromHex('5');
     auto root = this->keys_->New(0, first, last);
