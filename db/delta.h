@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <set>
 #include <algorithm>
+#include "db/buffer.h"
 #include "db/snapshot.h"
 
 namespace keyvadb
@@ -15,7 +16,7 @@ class Delta
     using key_type = typename util::key_type;
     using node_type = Node<BITS>;
     using node_ptr = std::shared_ptr<node_type>;
-    using snapshot_ptr = std::unique_ptr<Snapshot<BITS>>;
+    using buffer_type = Buffer<BITS>;
 
    private:
     std::uint64_t existing_;
@@ -70,14 +71,13 @@ class Delta
         current_->SetChild(i, cid);
     }
 
-    void AddKeys(snapshot_ptr const& snapshot)
+    void AddKeys(buffer_type& buffer)
     {
         // Full node, nothing to do
         if (current_->EmptyKeyCount() == 0)
             return;
         auto N = current_->MaxKeys();
-        std::set<KeyValue<BITS>> candidates(snapshot->Lower(current_->First()),
-                                            snapshot->Upper(current_->Last()));
+        auto candidates = buffer.GetRange(current_->First(), current_->Last());
         std::set<KeyValue<BITS>> existing(current_->NonZeroBegin(),
                                           current_->keys.cend());
         existing_ = existing.size();
@@ -130,7 +130,7 @@ class Delta
         for (auto const& kv : existing)
         {
             evictions_++;
-            snapshot->Add(kv.key, kv.value);
+            buffer.AddEvictee(kv.key, kv.value);
         }
         return;
     }

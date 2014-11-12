@@ -6,6 +6,9 @@ using namespace keyvadb;
 
 TYPED_TEST(StoreTest, TreeOperations)
 {
+    auto first = this->FromHex('0');
+    auto last = this->FromHex('F');
+
     auto tree = this->GetTree();
     ASSERT_FALSE(tree->Init(false));
     // Check root has been created
@@ -19,14 +22,12 @@ TYPED_TEST(StoreTest, TreeOperations)
     {
         for (std::size_t j = 0; j < rounds; j++)
         {
-            auto buffer = this->GetBuffer();
             // Use j as seed
-            buffer->FillRandom(n, j);
-            ASSERT_EQ(n, buffer->Size());
+            this->FillBuffer(n, j);
+            ASSERT_EQ(n, this->buffer_.Size());
             auto journal = this->GetJournal();
             std::error_condition err;
-            auto snapshot = buffer->GetSnapshot();
-            std::tie(journal, err) = tree->Add(snapshot);
+            std::tie(journal, err) = tree->Add(this->buffer_, this->values_);
             ASSERT_FALSE(err);
             this->checkTree(tree);
             ASSERT_FALSE(journal->Commit(*tree));
@@ -42,7 +43,8 @@ TYPED_TEST(StoreTest, TreeOperations)
                 ASSERT_EQ(journal->Size(), 0UL);
                 ASSERT_EQ(0UL, journal->TotalInsertions());
             }
-            for (auto const& kv : snapshot->keys) this->checkValue(tree, kv);
+            for (auto const& kv : this->buffer_.GetRange(first, last))
+                this->checkValue(tree, kv);
             // std::cout << *journal << "----" << std::endl;
         }
     }

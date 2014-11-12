@@ -9,7 +9,6 @@
 #include "db/memory.h"
 #include "db/file.h"
 #include "db/buffer.h"
-#include "db/bufferv2.h"
 #include "db/journal.h"
 
 using namespace keyvadb;
@@ -26,11 +25,11 @@ class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits>
     using journal_type = Journal<T::Bits>;
     using journal_ptr = std::unique_ptr<journal_type>;
     using buffer_type = Buffer<T::Bits>;
-    using buffer_ptr = std::unique_ptr<buffer_type>;
 
     typename T::KeyStorage keys_;
     typename T::ValueStorage values_;
     cache_type cache_;
+    buffer_type buffer_;
 
     virtual void InitStores() {}
 
@@ -41,6 +40,7 @@ class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits>
         ASSERT_FALSE(keys_->Clear());
         ASSERT_FALSE(values_->Open());
         ASSERT_FALSE(values_->Clear());
+        buffer_.Clear();
         cache_.Reset();
     }
 
@@ -61,7 +61,18 @@ class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits>
 
     journal_ptr GetJournal() { return std::make_unique<journal_type>(); }
 
-    buffer_ptr GetBuffer() { return std::make_unique<buffer_type>(); }
+    void FillBuffer(std::size_t n, std::uint32_t seed)
+    {
+        // Add some keys with every other value having an offset
+        std::uint64_t offset = 0;
+        for (auto const& key : this->RandomKeys(n, seed))
+        {
+            buffer_.Add(this->ToBytes(key), this->ToBytes(key));
+            if (offset % 2 == 0)
+                buffer_.SetOffset(key, offset);
+            offset++;
+        }
+    }
 
     void checkTree(tree_ptr const& tree)
     {

@@ -7,6 +7,7 @@
 #include <utility>
 #include "db/node.h"
 #include "db/store.h"
+#include "db/buffer.h"
 #include "db/cache.h"
 #include "db/delta.h"
 
@@ -23,23 +24,24 @@ class Tree
     using util = detail::KeyUtil<BITS>;
     using key_type = typename util::key_type;
     using key_value_type = KeyValue<BITS>;
-    using store_ptr = std::shared_ptr<KeyStore<BITS>>;
+    using key_store_ptr = std::shared_ptr<KeyStore<BITS>>;
+    using value_store_ptr = std::shared_ptr<ValueStore<BITS>>;
     using node_ptr = std::shared_ptr<Node<BITS>>;
     using node_func =
         std::function<std::error_condition(node_ptr, std::uint32_t)>;
     using journal_type = Journal<BITS>;
     using journal_ptr = std::unique_ptr<journal_type>;
-    using snapshot_ptr = std::unique_ptr<Snapshot<BITS>>;
+    using buffer_type = Buffer<BITS>;
     using delta_type = Delta<BITS>;
     using cache_type = NodeCache<BITS>;
 
    private:
     static const uint64_t rootId = 0;
-    store_ptr store_;
+    key_store_ptr store_;
     cache_type& cache_;
 
    public:
-    Tree(store_ptr const& store, cache_type& cache)
+    Tree(key_store_ptr const& store, cache_type& cache)
         : store_(store), cache_(cache)
     {
     }
@@ -55,6 +57,7 @@ class Tree
         root = store_->New(0, firstRootKey(), lastRootKey());
         if (addSynthetics)
             root->AddSyntheticKeyValues();
+        cache_.Reset();
         cache_.Add(root);
         return store_->Set(root);
     }
@@ -64,7 +67,7 @@ class Tree
     // Retuns a Journal of the changed nodes sorted by depth
     // The nodes are copies of the ones in the store (ie. copy on write)
     std::pair<journal_ptr, std::error_condition> Add(
-        snapshot_ptr const& snapshot) const
+        buffer_type& buffer, value_store_ptr& values) const
     {
         auto journal = std::make_unique<journal_type>();
         node_ptr root;
@@ -72,7 +75,7 @@ class Tree
         std::tie(root, err) = store_->Get(rootId);
         if (err)
             return std::make_pair(std::move(journal), err);
-        err = add(root, 1, snapshot, journal);
+        err = add(root, 1, buffer, values, journal);
         return std::make_pair(std::move(journal), err);
     }
 
@@ -136,11 +139,11 @@ class Tree
     static constexpr key_type lastRootKey() { return util::Max(); }
 
     std::error_condition add(node_ptr const& node, std::uint32_t const level,
-                             snapshot_ptr const& snapshot,
+                             buffer_type& buffer, value_store_ptr values,
                              journal_ptr const& journal) const
     {
         delta_type delta(node);
-        delta.AddKeys(snapshot);
+        delta.AddKeys(buffer);
         delta.CheckSanity();
         if (delta.Current()->EmptyKeyCount() == 0)
         {
@@ -148,13 +151,13 @@ class Tree
                 [&](const std::size_t i, const key_type& first,
                     const key_type& last, const std::uint64_t cid)
                 {
-                    if (!snapshot->ContainsRange(first, last))
+                    if (!buffer.ContainsRange(first, last))
                         return std::error_condition();
                     if (cid == EmptyChild)
                     {
                         auto child = store_->New(level, first, last);
                         delta.SetChild(i, child->Id());
-                        return add(child, level + 1, snapshot, journal);
+                        return add(child, level + 1, buffer, values, journal);
                     }
                     else
                     {
@@ -163,7 +166,7 @@ class Tree
                         std::tie(child, err) = store_->Get(cid);
                         if (err)
                             return err;
-                        return add(child, level + 1, snapshot, journal);
+                        return add(child, level + 1, buffer, values, journal);
                     }
                 });
             if (err)
