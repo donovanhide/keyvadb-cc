@@ -22,7 +22,7 @@ class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits>
     using tree_type = Tree<T::Bits>;
     using tree_ptr = std::unique_ptr<tree_type>;
     using cache_type = NodeCache<T::Bits>;
-    using journal_type = Journal<T::Bits>;
+    using journal_type = Journal<T>;
     using journal_ptr = std::unique_ptr<journal_type>;
     using buffer_type = Buffer<T::Bits>;
 
@@ -59,7 +59,10 @@ class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits>
 
     tree_ptr GetTree() { return std::make_unique<tree_type>(keys_, cache_); }
 
-    journal_ptr GetJournal() { return std::make_unique<journal_type>(); }
+    journal_ptr GetJournal()
+    {
+        return std::make_unique<journal_type>(buffer_, keys_, values_);
+    }
 
     void FillBuffer(std::size_t n, std::uint32_t seed)
     {

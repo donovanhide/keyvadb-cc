@@ -5,7 +5,6 @@
 #include <set>
 #include <algorithm>
 #include "db/buffer.h"
-#include "db/snapshot.h"
 
 namespace keyvadb
 {

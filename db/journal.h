@@ -5,30 +5,51 @@
 #include <map>
 #include <system_error>
 #include "db/key.h"
+#include "db/node.h"
+#include "db/tree.h"
+#include "db/buffer.h"
 #include "db/store.h"
 #include "db/delta.h"
 
 namespace keyvadb
 {
-// Forward declaration
-template <std::uint32_t BITS>
-class Tree;
-
-template <std::uint32_t BITS>
+// Journal is the where all changes to the keys and values occur
+// and the rollback file is created.
+template <class Storage>
 class Journal
 {
-    using delta_type = Delta<BITS>;
-    using node_ptr = std::shared_ptr<Node<BITS>>;
-    using key_store_ptr = std::shared_ptr<KeyStore<BITS>>;
-    using tree_type = Tree<BITS>;
+    using util = detail::KeyUtil<Storage::Bits>;
+    using key_type = typename util::key_type;
+    using key_store_ptr = typename Storage::KeyStorage;
+    using value_store_ptr = typename Storage::ValueStorage;
+    using key_value_type = KeyValue<Storage::Bits>;
+    using delta_type = Delta<Storage::Bits>;
+    using node_ptr = std::shared_ptr<Node<Storage::Bits>>;
+    using tree_type = Tree<Storage::Bits>;
+    using buffer_type = Buffer<Storage::Bits>;
 
    private:
+    buffer_type& buffer_;
+    key_store_ptr keys_;
+    value_store_ptr values_;
     std::multimap<std::uint32_t, delta_type> deltas_;
+    std::uint64_t offset_;
 
    public:
-    void Add(std::uint32_t const level, delta_type const& delta)
+    Journal(buffer_type& buffer, key_store_ptr& keys, value_store_ptr& values)
+        : buffer_(buffer), keys_(keys), values_(values)
     {
-        deltas_.emplace(level, delta);
+    }
+
+    std::error_condition Process(tree_type& tree)
+    {
+        offset_ = values_->Size();
+        std::error_condition err;
+        node_ptr root;
+        std::tie(root, err) = tree.Root();
+        if (err)
+            return err;
+        return process(root, 0);
     }
 
     std::error_condition Commit(tree_type& tree)
@@ -62,11 +83,45 @@ class Journal
 
         return stream;
     }
-};
 
-template <std::uint32_t BITS>
-std::unique_ptr<Journal<BITS>> MakeJournal()
-{
-    return std::make_unique<Journal<BITS>>();
-}
+   private:
+    std::error_condition process(node_ptr const& node,
+                                 std::uint32_t const level)
+    {
+        delta_type delta(node);
+        delta.AddKeys(buffer_);
+        delta.CheckSanity();
+        if (delta.Current()->EmptyKeyCount() == 0)
+        {
+            auto err = delta.Current()->EachChild(
+                [&](const std::size_t i, const key_type& first,
+                    const key_type& last, const std::uint64_t cid)
+                {
+                    if (!buffer_.ContainsRange(first, last))
+                        return std::error_condition();
+                    if (cid == EmptyChild)
+                    {
+                        auto child = keys_->New(level, first, last);
+                        delta.SetChild(i, child->Id());
+                        return process(child, level + 1);
+                    }
+                    else
+                    {
+                        node_ptr child;
+                        std::error_condition err;
+                        std::tie(child, err) = keys_->Get(cid);
+                        if (err)
+                            return err;
+                        return process(child, level + 1);
+                    }
+                });
+            if (err)
+                return err;
+        }
+        delta.CheckSanity();
+        if (delta.Dirty())
+            deltas_.emplace(level, delta);
+        return std::error_condition();
+    }
+};
 }  // namespace keyvadb

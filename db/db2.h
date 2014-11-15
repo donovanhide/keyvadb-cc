@@ -12,6 +12,7 @@
 #include "db/file.h"
 #include "db/buffer.h"
 #include "db/tree.h"
+#include "db/journal.h"
 #include "db/log.h"
 
 namespace keyvadb
@@ -20,11 +21,11 @@ template <class Storage, class Log = NullLog>
 class DB
 {
     using util = detail::KeyUtil<Storage::Bits>;
-    using key_store_type = typename Storage::KeyStorage;
-    using value_store_type = typename Storage::ValueStorage;
+    using key_store_ptr = typename Storage::KeyStorage;
+    using value_store_ptr = typename Storage::ValueStorage;
     using key_value_type = KeyValue<Storage::Bits>;
     using buffer_type = Buffer<Storage::Bits>;
-    using journal_type = std::unique_ptr<Journal<Storage::Bits>>;
+    using journal_type = Journal<Storage>;
     using tree_type = Tree<Storage::Bits>;
     using cache_type = NodeCache<Storage::Bits>;
     using key_value_func =
@@ -35,8 +36,8 @@ class DB
         key_length = Storage::Bits / 8
     };
     Log log_;
-    key_store_type keys_;
-    value_store_type values_;
+    key_store_ptr keys_;
+    value_store_ptr values_;
     cache_type cache_;
     tree_type tree_;
     buffer_type buffer_;
@@ -150,16 +151,14 @@ class DB
         if (log_.info)
             log_.info << "Flushing approximately: " << buffer_.Size()
                       << " keys";
-        journal_type journal;
-        std::error_condition err;
-        std::tie(journal, err) = tree_.Add(buffer_, values_);
-        if (err)
+        journal_type journal(buffer_, keys_, values_);
+        if (auto err = journal.Process(tree_))
             return err;
-        if (auto err = journal->Commit(tree_))
+        if (auto err = journal.Commit(tree_))
             return err;
         if (log_.info)
             log_.info << "Flushed: " << buffer_.Size() << " keys into "
-                      << journal->Size() << " nodes";
+                      << journal.Size() << " nodes";
         return std::error_condition();
     }
 

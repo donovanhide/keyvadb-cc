@@ -141,6 +141,8 @@ class FileValueStore : public ValueStore<BITS>
         } while (filePosition < size_);
         return std::error_condition();
     }
+
+    std::uint64_t Size() const { return size_; }
 };
 
 template <std::uint32_t BITS>

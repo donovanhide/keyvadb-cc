@@ -67,6 +67,7 @@ class MemoryValueStore : public ValueStore<BITS>
         }
         return std::error_condition();
     }
+    std::uint64_t Size() const { return id_; }
 };
 
 template <std::uint32_t BITS>

@@ -35,6 +35,7 @@ class ValueStore
     virtual std::error_condition Set(std::string const&, std::string const&,
                                      key_value_type&) = 0;
     virtual std::error_condition Each(key_value_func) const = 0;
+    virtual std::uint64_t Size() const = 0;
 };
 
 template <std::uint32_t BITS>

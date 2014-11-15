@@ -26,9 +26,7 @@ TYPED_TEST(StoreTest, TreeOperations)
             this->FillBuffer(n, j);
             ASSERT_EQ(n, this->buffer_.Size());
             auto journal = this->GetJournal();
-            std::error_condition err;
-            std::tie(journal, err) = tree->Add(this->buffer_, this->values_);
-            ASSERT_FALSE(err);
+            ASSERT_FALSE(journal->Process(*tree));
             this->checkTree(tree);
             ASSERT_FALSE(journal->Commit(*tree));
             this->checkTree(tree);

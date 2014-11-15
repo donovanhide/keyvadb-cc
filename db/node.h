@@ -8,7 +8,6 @@
 #include <algorithm>
 #include "db/key.h"
 #include "db/encoding.h"
-#include "db/journal.h"
 
 namespace keyvadb
 {
