@@ -29,6 +29,7 @@ TYPED_TEST(StoreTest, TreeOperations)
             auto journal = this->GetJournal();
             ASSERT_FALSE(journal->Process(*tree));
             this->checkTree(tree);
+            std::cout << this->buffer_;
             ASSERT_FALSE(journal->Commit(*tree));
             this->checkTree(tree);
             std::cout << this->buffer_;

@@ -77,13 +77,13 @@ class Delta
             return;
         auto N = current_->MaxKeys();
         auto candidates = buffer.GetRange(current_->First(), current_->Last());
-        std::cout << candidates.size() << std::endl;
         std::set<KeyValue<BITS>> existing(current_->NonZeroBegin(),
                                           current_->keys.cend());
         existing_ = existing.size();
         std::set<KeyValue<BITS>> combined(candidates);
         std::copy(existing.cbegin(), existing.cend(),
                   std::inserter(combined, combined.end()));
+
         if (existing_ == combined.size())
         {
             // All dupes
@@ -97,6 +97,8 @@ class Delta
             std::copy_backward(combined.cbegin(), combined.cend(),
                                current_->keys.end());
             insertions_ = combined.size() - existing_;
+            for (const auto& kv : candidates)
+                buffer.SetOffset(kv.key, offset++);
             return;
         }
         // Handle overflowing node
