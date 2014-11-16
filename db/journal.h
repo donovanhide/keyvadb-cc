@@ -60,6 +60,8 @@ class Journal
              ++it)
             if (auto err = tree.Update(it->second.Current()))
                 return err;
+        buffer_.Purge();
+        deltas_.clear();
         return std::error_condition();
     }
 
@@ -89,7 +91,7 @@ class Journal
                                  std::uint32_t const level)
     {
         delta_type delta(node);
-        delta.AddKeys(buffer_);
+        delta.AddKeys(buffer_, offset_);
         delta.CheckSanity();
         if (delta.Current()->EmptyKeyCount() == 0)
         {

@@ -3,7 +3,7 @@
 #include <set>
 #include <random>
 #include "tests/common.h"
-#include "db/db2.h"
+#include "db/db.h"
 
 using namespace keyvadb;
 

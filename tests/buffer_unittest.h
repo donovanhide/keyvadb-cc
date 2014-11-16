@@ -29,15 +29,15 @@ TEST(BufferTest, General)
     ASSERT_FALSE(buffer.ContainsRange(ones - 1, ones));
     ASSERT_TRUE(buffer.ContainsRange(ones, ones + 2));
     ASSERT_TRUE(buffer.ContainsRange(ones - 2, ones));
-    std::cout << buffer;
+    // std::cout << buffer;
 }
 
-TEST(BufferTest, Random)
+TEST(BufferTest, Purge)
 {
     using util = detail::KeyUtil<256>;
     Buffer<256> buffer;
     ASSERT_EQ(0UL, buffer.Size());
-    auto keys = util::RandomKeys(10000, 0);
+    auto keys = util::RandomKeys(10, 0);
     // Add some keys with every other value having an offset
     std::uint64_t offset = 0;
     for (auto const& key : keys)
@@ -48,5 +48,8 @@ TEST(BufferTest, Random)
         offset++;
     }
     ASSERT_EQ(keys.size(), buffer.Size());
-    auto range = buffer.GetRange(util::FromHex('0'), util::FromHex('8'));
+    // std::cout << buffer;
+    buffer.Purge();
+    // std::cout << buffer;
+    ASSERT_EQ(keys.size() / 2, buffer.Size());
 }

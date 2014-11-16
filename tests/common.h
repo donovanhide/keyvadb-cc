@@ -25,6 +25,7 @@ class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits>
     using journal_type = Journal<T>;
     using journal_ptr = std::unique_ptr<journal_type>;
     using buffer_type = Buffer<T::Bits>;
+    using random_type = std::vector<std::pair<std::string, std::string>>;
 
     typename T::KeyStorage keys_;
     typename T::ValueStorage values_;
@@ -64,17 +65,15 @@ class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits>
         return std::make_unique<journal_type>(buffer_, keys_, values_);
     }
 
-    void FillBuffer(std::size_t n, std::uint32_t seed)
+    random_type RandomKeyValues(std::size_t n, std::uint32_t seed)
     {
-        // Add some keys with every other value having an offset
-        std::uint64_t offset = 0;
+        random_type pairs;
         for (auto const& key : this->RandomKeys(n, seed))
         {
-            buffer_.Add(this->ToBytes(key), this->ToBytes(key));
-            if (offset % 2 == 0)
-                buffer_.SetOffset(key, offset);
-            offset++;
+            auto keyBytes = this->ToBytes(key);
+            pairs.emplace_back(keyBytes, keyBytes);
         }
+        return pairs;
     }
 
     void checkTree(tree_ptr const& tree)

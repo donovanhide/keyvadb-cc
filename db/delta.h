@@ -70,13 +70,14 @@ class Delta
         current_->SetChild(i, cid);
     }
 
-    void AddKeys(buffer_type& buffer)
+    void AddKeys(buffer_type& buffer, std::uint64_t offset)
     {
         // Full node, nothing to do
         if (current_->EmptyKeyCount() == 0)
             return;
         auto N = current_->MaxKeys();
         auto candidates = buffer.GetRange(current_->First(), current_->Last());
+        std::cout << candidates.size() << std::endl;
         std::set<KeyValue<BITS>> existing(current_->NonZeroBegin(),
                                           current_->keys.cend());
         existing_ = existing.size();
@@ -85,7 +86,8 @@ class Delta
                   std::inserter(combined, combined.end()));
         if (existing_ == combined.size())
         {
-            // All dupes nothing to do
+            // All dupes
+            for (const auto& kv : candidates) buffer.SetDuplicate(kv.key);
             return;
         }
         Flip();
@@ -123,6 +125,8 @@ class Delta
             if (candidates.count(kv) > 0)
             {
                 insertions_++;
+                std::cout << kv.key << std::endl;
+                buffer.SetOffset(kv.key, offset++);
             }
             existing.erase(kv);
         }

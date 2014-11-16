@@ -11,6 +11,7 @@
 #include <map>
 #include <ostream>
 #include <mutex>
+#include <algorithm>
 #include "db/key.h"
 
 namespace keyvadb
@@ -30,19 +31,30 @@ class Buffer
    private:
     using offset_type = boost::optional<std::uint64_t>;
 
+    enum class ValueState : std::uint8_t
+    {
+        Unprocessed,
+        Evicted,
+        Duplicated,
+        NeedsComitting,
+    };
+
     struct Value
     {
         offset_type offset;
         std::string value;
+        ValueState status;
     };
 
     struct ValueComparer
     {
         bool operator()(Value const &lhs, Value const &rhs) const
         {
-            if (lhs.offset == rhs.offset)
+            if (lhs.status == rhs.status && lhs.offset == rhs.offset)
                 return lhs.value < rhs.value;
-            return lhs.offset < rhs.offset;
+            if (lhs.status == rhs.status)
+                return lhs.offset < rhs.offset;
+            return lhs.status < rhs.status;
         }
     };
 
@@ -54,6 +66,10 @@ class Buffer
                      boost::bimaps::multiset_of<Value, ValueComparer>>;
     using const_iterator = typename map_type::left_const_iterator;
     using key_value_type = typename map_type::value_type;
+    using left_key_value_type = typename map_type::left_value_type;
+
+    static const std::string emptyBufferValue;
+    static const std::map<ValueState, std::string> valueStates;
 
     map_type buf_;
     mutable std::mutex mtx_;
@@ -61,17 +77,33 @@ class Buffer
    public:
     std::size_t Add(std::string const &key, std::string const &value)
     {
-        std::lock_guard<std::mutex> lock(mtx_);
-        buf_.insert(
-            key_value_type(util::FromBytes(key), Value{boost::none, value}));
-        return buf_.size();
+        return add(util::FromBytes(key), boost::none, value,
+                   ValueState::Unprocessed);
     }
 
-    void AddEvictee(key_type const &key, std::uint64_t const offset)
+    std::size_t AddEvictee(key_type const &key, std::uint64_t const offset)
     {
-        const static std::string emptyBufferValue;
+        return add(key, offset, emptyBufferValue, ValueState::Evicted);
+    }
+
+    void SetDuplicate(key_type const &key)
+    {
         std::lock_guard<std::mutex> lock(mtx_);
-        buf_.insert(key_value_type(key, Value{offset, emptyBufferValue}));
+        auto it = buf_.left.find(key);
+        if (it != buf_.left.end())
+            buf_.left.modify_data(it, boost::bimaps::_data = Value{
+                                          it->second.offset, it->second.value,
+                                          ValueState::Duplicated});
+    }
+
+    void SetOffset(key_type const &key, offset_type const offset)
+    {
+        std::lock_guard<std::mutex> lock(mtx_);
+        auto it = buf_.left.find(key);
+        if (it != buf_.left.end())
+            buf_.left.modify_data(
+                it, boost::bimaps::_data = Value{offset, it->second.value,
+                                                 ValueState::NeedsComitting});
     }
 
     value_type Get(std::string const &key) const
@@ -83,14 +115,13 @@ class Buffer
         return boost::none;
     }
 
-    bool SetOffset(key_type const &key, offset_type const offset)
+    void Purge()
     {
         std::lock_guard<std::mutex> lock(mtx_);
-        auto it = buf_.left.find(key);
-        if (it == buf_.left.end())
-            return false;
-        return buf_.left.modify_data(
-            it, boost::bimaps::_data = Value{offset, it->second.value});
+        offset_type emptyOffset;
+        auto it = buf_.right.lower_bound(
+            Value{boost::none, emptyBufferValue, ValueState::Evicted});
+        buf_.right.erase(it, buf_.right.end());
     }
 
     // Returns all
@@ -99,11 +130,11 @@ class Buffer
     {
         std::set<KeyValue<BITS>> range;
         std::lock_guard<std::mutex> lock(mtx_);
-        for (auto it = Lower(firstKey), last = Upper(lastKey); it != last; it++)
-        {
-            if (it->second.offset)
-                range.emplace(KeyValue<BITS>{it->first, *it->second.offset});
-        }
+        std::for_each(lower(firstKey), upper(lastKey),
+                      [&range](left_key_value_type const &kv)
+                      {
+            range.emplace(KeyValue<BITS>{kv.first, 0});
+        });
         return range;
     }
 
@@ -122,7 +153,7 @@ class Buffer
         if (first > last)
             throw std::invalid_argument("First must not be greater than last");
         std::lock_guard<std::mutex> lock(mtx_);
-        return Lower(first) != Upper(last);
+        return lower(first) != upper(last);
     }
 
     friend std::ostream &operator<<(std::ostream &stream, const Buffer &buffer)
@@ -131,25 +162,48 @@ class Buffer
         std::lock_guard<std::mutex> lock(buffer.mtx_);
         for (auto const &kv : buffer.buf_)
             stream << util::ToHex(kv.left) << ":" << kv.right.offset << ":"
-                   << boost::algorithm::hex(kv.right.value) << std::endl;
+                   << boost::algorithm::hex(kv.right.value) << ":"
+                   << valueStates.at(kv.right.status) << std::endl;
         stream << "--------" << std::endl;
         for (auto it = buffer.buf_.right.begin(); it != buffer.buf_.right.end();
              ++it)
             stream << util::ToHex(it->second) << ":" << it->first.offset << ":"
-                   << boost::algorithm::hex(it->first.value) << std::endl;
+                   << boost::algorithm::hex(it->first.value) << ":"
+                   << valueStates.at(it->first.status) << std::endl;
         stream << "--------" << std::endl;
         return stream;
     }
 
    private:
-    const_iterator Lower(key_type const &first) const
+    std::size_t add(key_type const &key, offset_type const &offset,
+                    std::string const &value, ValueState const &status)
+    {
+        std::lock_guard<std::mutex> lock(mtx_);
+        buf_.insert(key_value_type(key, Value{offset, value, status}));
+        return buf_.size();
+    }
+
+    const_iterator lower(key_type const &first) const
     {
         return buf_.left.upper_bound(first);
     }
 
-    const_iterator Upper(key_type const &last) const
+    const_iterator upper(key_type const &last) const
     {
         return buf_.left.lower_bound(last);
     }
 };
+
+template <std::uint32_t BITS>
+const std::string Buffer<BITS>::emptyBufferValue;
+
+template <std::uint32_t BITS>
+const std::map<typename Buffer<BITS>::ValueState, std::string>
+    Buffer<BITS>::valueStates{
+        {Buffer<BITS>::ValueState::Unprocessed, "Unprocessed"},
+        {Buffer<BITS>::ValueState::Evicted, "Evicted"},
+        {Buffer<BITS>::ValueState::Duplicated, "Duplicated"},
+        {Buffer<BITS>::ValueState::NeedsComitting, "NeedsComitting"},
+    };
+
 }  // namespace keyvadb

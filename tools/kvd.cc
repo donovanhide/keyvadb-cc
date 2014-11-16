@@ -5,7 +5,7 @@
 #include <string>
 #include <csignal>
 #include <chrono>
-#include "db/db2.h"
+#include "db/db.h"
 
 using boost::algorithm::unhex;
 using boost::algorithm::hex;
