@@ -127,7 +127,6 @@ class Delta
             if (candidates.count(kv) > 0)
             {
                 insertions_++;
-                std::cout << kv.key << std::endl;
                 buffer.SetOffset(kv.key, offset++);
             }
             existing.erase(kv);

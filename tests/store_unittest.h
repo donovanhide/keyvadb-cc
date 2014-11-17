@@ -30,17 +30,17 @@ TYPED_TEST(StoreTest, SetAndGetKeys)
 
 TYPED_TEST(StoreTest, SetAndGetValues)
 {
-    auto key1 = this->HexString('1');
-    auto key2 = this->HexString('2');
+    auto key1 = this->FromHex('1');
+    auto key2 = this->FromHex('2');
     std::string value1("First Value");
     std::string value2("Second Value");
-    auto kv1 = this->EmptyKeyValue();
-    auto kv2 = this->EmptyKeyValue();
-    ASSERT_FALSE(this->values_->Set(key1, value1, kv1));
-    ASSERT_FALSE(this->values_->Set(key2, value2, kv2));
+    auto v1 = this->GetValue(0, value1);
+    auto v2 = this->GetValue(1, value1);
+    ASSERT_FALSE(this->values_->Set(key1, v1));
+    ASSERT_FALSE(this->values_->Set(key2, v2));
     std::string got1, got2;
-    ASSERT_FALSE(this->values_->Get(kv1.value, &got1));
-    ASSERT_FALSE(this->values_->Get(kv2.value, &got2));
+    ASSERT_FALSE(this->values_->Get(*v1.offset, &got1));
+    ASSERT_FALSE(this->values_->Get(*v2.offset, &got2));
     ASSERT_EQ(value1, got1);
     ASSERT_EQ(value2, got2);
 }

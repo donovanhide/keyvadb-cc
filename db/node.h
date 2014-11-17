@@ -6,6 +6,7 @@
 #include <string>
 #include <system_error>
 #include <algorithm>
+#include <cmath>
 #include "db/key.h"
 #include "db/encoding.h"
 
@@ -63,6 +64,12 @@ class Node
                                     util::ToHex(last));
     }
 
+    static std::uint32_t CalculateDegree(std::uint32_t const blockSize)
+    {
+        static const std::uint32_t bytes = BITS / 8;
+        return (blockSize - 2 * bytes - 12) / (bytes + 20);
+    }
+
     std::size_t Write(std::string& str) const
     {
         size_t pos = 0;
@@ -104,7 +111,7 @@ class Node
         {
             if (key.IsZero())
             {
-                key = key_value_type{cursor, SyntheticValue};
+                key = key_value_type{cursor, SyntheticValue, 0};
                 count++;
             }
             cursor += stride;
@@ -114,7 +121,7 @@ class Node
 
     void Clear()
     {
-        std::fill(keys.begin(), keys.end(), key_value_type{0, EmptyValue});
+        std::fill(keys.begin(), keys.end(), key_value_type{0, EmptyValue, 0});
     }
 
     void SetChild(std::size_t const i, std::uint64_t const cid)

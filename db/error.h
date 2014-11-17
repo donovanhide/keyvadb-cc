@@ -10,6 +10,7 @@ enum db_error
     key_not_found = 1,
     value_not_found,
     key_wrong_length,
+    value_too_long,
     short_read,
     short_write
 };
@@ -26,6 +27,8 @@ class db_category : public std::error_category
             return "Key not found";
         case db_error::key_wrong_length:
             return "Key wrong length";
+        case db_error::value_too_long:
+            return "Value too long";
         case db_error::value_not_found:
             return "Value not found";
         case db_error::short_read:

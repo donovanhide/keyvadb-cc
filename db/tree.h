@@ -11,6 +11,7 @@
 #include "db/buffer.h"
 #include "db/cache.h"
 #include "db/delta.h"
+#include "db/error.h"
 
 namespace keyvadb
 {

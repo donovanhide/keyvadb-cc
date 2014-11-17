@@ -50,3 +50,9 @@ TYPED_TEST(NodeTest, CopyAssign)
     ASSERT_NE(assignNode.GetKeyValue(7), copyNode.GetKeyValue(7));
     ASSERT_NE(node.GetChild(0), copyNode.GetChild(0));
 }
+
+TEST(NodeTest, CalculateDegree)
+{
+    ASSERT_EQ(77UL, Node<256>::CalculateDegree(4096));
+    ASSERT_EQ(156UL, Node<256>::CalculateDegree(8192));
+}

@@ -16,7 +16,7 @@ class FileValueStore : public ValueStore<BITS>
 {
     using util = detail::KeyUtil<BITS>;
     using key_type = typename util::key_type;
-    using key_value_type = KeyValue<BITS>;
+    using value_type = typename Buffer<BITS>::Value;
     using file_type = std::unique_ptr<RandomAccessFile>;
     using key_value_func =
         std::function<void(std::string const&, std::string const&)>;
@@ -86,21 +86,20 @@ class FileValueStore : public ValueStore<BITS>
         value->assign(str, value_offset_, std::string::npos);
         return std::error_condition();
     }
-    std::error_condition Set(std::string const& key, std::string const& value,
-                             key_value_type& kv) override
+
+    std::error_condition Set(key_type const& key,
+                             value_type const& value) override
     {
-        auto length = value_offset_ + value.size();
+        auto length = value_offset_ + value.value.size();
         std::string str(length, '\0');
         size_t pos = 0;
         pos += string_replace<std::uint64_t>(length, pos, str);
-        str.replace(pos, key.size(), key);
-        pos += key.size();
-        str.replace(pos, value.size(), value);
-        auto newSize = (size_ += length);
-        kv = {util::FromBytes(key), newSize - length};
+        str.replace(pos, Bytes, util::ToBytes(key));
+        pos += Bytes;
+        str.replace(pos, value.value.size(), value.value);
         std::size_t bytesWritten;
         std::error_condition err;
-        std::tie(bytesWritten, err) = file_->WriteAt(str, kv.value);
+        std::tie(bytesWritten, err) = file_->WriteAt(str, *value.offset);
         if (err)
             return err;
         if (bytesWritten != length)

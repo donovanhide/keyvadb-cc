@@ -15,7 +15,7 @@ class MemoryValueStore : public ValueStore<BITS>
    public:
     using util = detail::KeyUtil<BITS>;
     using key_type = typename util::key_type;
-    using key_value_type = KeyValue<BITS>;
+    using value_type = typename Buffer<BITS>::Value;
     using key_value_func =
         std::function<void(std::string const&, std::string const&)>;
 
@@ -48,12 +48,11 @@ class MemoryValueStore : public ValueStore<BITS>
         return std::error_condition();
     }
 
-    std::error_condition Set(std::string const& key, std::string const& value,
-                             key_value_type& kv) override
+    std::error_condition Set(key_type const& key,
+                             value_type const& value) override
     {
-        kv = {util::FromBytes(key), id_++};
         std::lock_guard<std::mutex> lock(lock_);
-        map_[kv.value] = std::make_pair(key, value);
+        map_[*value.offset] = std::make_pair(util::ToBytes(key), value.value);
         return std::error_condition();
     };
 

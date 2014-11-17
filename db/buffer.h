@@ -28,9 +28,8 @@ namespace keyvadb
 template <std::uint32_t BITS>
 class Buffer
 {
-   private:
+   public:
     using offset_type = boost::optional<std::uint64_t>;
-
     enum class ValueState : std::uint8_t
     {
         Unprocessed,
@@ -58,6 +57,7 @@ class Buffer
         }
     };
 
+   private:
     using util = detail::KeyUtil<BITS>;
     using key_type = typename util::key_type;
     using value_type = boost::optional<std::string>;
@@ -133,7 +133,8 @@ class Buffer
         std::for_each(lower(firstKey), upper(lastKey),
                       [&range](left_key_value_type const &kv)
                       {
-            range.emplace(KeyValue<BITS>{kv.first, 0});
+            range.emplace(KeyValue<BITS>{
+                kv.first, 0, std::uint32_t(kv.second.value.size())});
         });
         return range;
     }

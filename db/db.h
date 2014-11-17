@@ -139,6 +139,8 @@ class DB
     {
         if (key.length() != key_length)
             return db_error::key_wrong_length;
+        if (value.size() > std::numeric_limits<std::uint32_t>::max())
+            return db_error::value_too_long;
         buffer_.Add(key, value);
         return std::error_condition();
     }

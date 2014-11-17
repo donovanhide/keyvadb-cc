@@ -168,8 +168,9 @@ struct KeyValue
     using util = detail::KeyUtil<BITS>;
     using key_type = typename util::key_type;
 
-    key_type key;         // Hash of actual value
-    std::uint64_t value;  // offset of actual value in values file
+    key_type key;          // Hash of actual value
+    std::uint64_t value;   // offset of actual value in values file
+    std::uint32_t length;  // length of value
 
     constexpr bool IsZero() const { return key.is_zero(); }
     constexpr bool IsSynthetic() const { return value == SyntheticValue; }

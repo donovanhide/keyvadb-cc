@@ -18,6 +18,8 @@ class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits>
 {
    protected:
     using node_ptr = std::shared_ptr<Node<T::Bits>>;
+    using value_type = typename Buffer<T::Bits>::Value;
+    using status_type = typename Buffer<T::Bits>::ValueState;
     using key_value_type = KeyValue<T::Bits>;
     using tree_type = Tree<T::Bits>;
     using tree_ptr = std::unique_ptr<tree_type>;
@@ -52,6 +54,11 @@ class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits>
     }
 
     node_ptr EmptyNode() { return nullptr; }
+
+    value_type GetValue(std::uint64_t const offset, std::string const& value)
+    {
+        return value_type{offset, value, status_type::Unprocessed};
+    }
 
     key_value_type EmptyKeyValue() { return key_value_type(); }
 
