@@ -51,45 +51,25 @@ class FileValueStore : public ValueStore<BITS>
         return file_->Truncate();
     }
     std::error_condition Close() override { return file_->Close(); }
-    std::error_condition Get(std::uint64_t const id,
+    std::error_condition Get(std::uint64_t const offset,
+                             std::uint64_t const length,
                              std::string* value) const override
     {
-        std::string str(4096, '\0');
-        // Optmistically read a block
+        value->resize(length);
         std::size_t bytesRead;
         std::error_condition err;
-        std::tie(bytesRead, err) = file_->ReadAt(id, str);
+        std::tie(bytesRead, err) = file_->ReadAt(offset, *value);
         if (err)
             return err;
-        if (bytesRead == 0)
-            return make_error_condition(db_error::value_not_found);
-        if (bytesRead < sizeof(std::uint64_t))
+        if (bytesRead < length)
             return make_error_condition(db_error::short_read);
-        std::uint64_t length = 0;
-        string_read<std::uint64_t>(str, 0, length);
-        str.resize(length);
-        if (length > 4096)
-        {
-            // Get the actual length
-            std::tie(bytesRead, err) = file_->ReadAt(id, str);
-            if (err)
-                return err;
-            if (bytesRead == 0)
-                return make_error_condition(db_error::value_not_found);
-            if (bytesRead != str.length())
-                return make_error_condition(db_error::short_read);
-        }
-        else if (bytesRead < str.length())
-        {
-            return make_error_condition(db_error::short_read);
-        }
-        value->assign(str, value_offset_, std::string::npos);
         return std::error_condition();
     }
 
     std::error_condition Set(key_type const& key,
                              value_type const& value) override
     {
+        assert(value.ReadyForWriting());
         auto length = value_offset_ + value.value.size();
         std::string str(length, '\0');
         size_t pos = 0;

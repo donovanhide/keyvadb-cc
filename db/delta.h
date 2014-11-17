@@ -134,7 +134,7 @@ class Delta
         for (auto const& kv : existing)
         {
             evictions_++;
-            buffer.AddEvictee(kv.key, kv.value);
+            buffer.AddEvictee(kv.key, kv.offset);
         }
         return;
     }

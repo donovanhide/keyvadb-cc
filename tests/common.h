@@ -57,7 +57,7 @@ class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits>
 
     value_type GetValue(std::uint64_t const offset, std::string const& value)
     {
-        return value_type{offset, value, status_type::Unprocessed};
+        return value_type{offset, value, status_type::NeedsCommitting};
     }
 
     key_value_type EmptyKeyValue() { return key_value_type(); }
@@ -103,11 +103,11 @@ class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits>
 
     void checkValue(tree_ptr const& tree, KeyValue<256> const kv)
     {
-        std::uint64_t value;
+        key_value_type got;
         std::error_condition err;
-        std::tie(value, err) = tree->Get(kv.key);
+        std::tie(got, err) = tree->Get(kv.key);
         ASSERT_FALSE(err);
-        ASSERT_EQ(kv.value, value);
+        ASSERT_EQ(kv, got);
     }
 };
 

@@ -124,15 +124,14 @@ class DB
             return std::error_condition();
         }
         // Value must be on disk
-        std::uint64_t offset;
+        key_value_type kv;
         std::error_condition err;
-        std::tie(offset, err) = tree_.Get(util::FromBytes(key));
+        std::tie(kv, err) = tree_.Get(util::FromBytes(key));
         if (err)
             return err;
         if (log_.debug)
-            log_.debug << "Get: " << boost::algorithm::hex(key) << ":"
-                       << offset;
-        return values_->Get(offset, value);
+            log_.debug << "Get: " << boost::algorithm::hex(key) << ":" << kv;
+        return values_->Get(kv.offset, kv.length, value);
     }
 
     std::error_condition Put(std::string const &key, std::string const &value)

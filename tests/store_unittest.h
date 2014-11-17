@@ -35,12 +35,12 @@ TYPED_TEST(StoreTest, SetAndGetValues)
     std::string value1("First Value");
     std::string value2("Second Value");
     auto v1 = this->GetValue(0, value1);
-    auto v2 = this->GetValue(1, value1);
+    auto v2 = this->GetValue(v1.Size(), value2);
     ASSERT_FALSE(this->values_->Set(key1, v1));
     ASSERT_FALSE(this->values_->Set(key2, v2));
     std::string got1, got2;
-    ASSERT_FALSE(this->values_->Get(*v1.offset, &got1));
-    ASSERT_FALSE(this->values_->Get(*v2.offset, &got2));
+    ASSERT_FALSE(this->values_->Get(*v1.offset, v1.Size(), &got1));
+    ASSERT_FALSE(this->values_->Get(*v2.offset, v1.Size(), &got2));
     ASSERT_EQ(value1, got1);
     ASSERT_EQ(value2, got2);
 }

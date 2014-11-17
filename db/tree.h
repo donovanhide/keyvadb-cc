@@ -64,7 +64,7 @@ class Tree
         return store_->Get(rootId);
     }
 
-    std::pair<std::uint64_t, std::error_condition> Get(
+    std::pair<key_value_type, std::error_condition> Get(
         key_type const& key) const
     {
         auto node = cache_.Get(key);
@@ -73,7 +73,7 @@ class Tree
             std::error_condition err;
             std::tie(node, err) = store_->Get(rootId);
             if (err)
-                return std::make_pair(EmptyValue, err);
+                return std::make_pair(key_value_type{}, err);
         }
         return get(node, key);
     }
@@ -123,12 +123,12 @@ class Tree
     static constexpr key_type firstRootKey() { return util::Min() + 1; }
     static constexpr key_type lastRootKey() { return util::Max(); }
 
-    std::pair<std::uint64_t, std::error_condition> get(
+    std::pair<key_value_type, std::error_condition> get(
         node_ptr const& node, key_type const& key) const
     {
-        std::uint64_t value = 0;
-        if (node->Find(key, &value))
-            return std::make_pair(value, std::error_condition());
+        key_value_type kv;
+        if (node->Find(key, &kv))
+            return std::make_pair(kv, std::error_condition());
         // TODO(DH) This needs early breaking to be efficient
         bool found = false;
         auto err = node->EachChild(
@@ -148,15 +148,14 @@ class Tree
                         return err;
                     }
                     cache_.Add(node);
-                    std::tie(value, err) = get(node, key);
+                    std::tie(kv, err) = get(node, key);
                     return err;
                 }
                 return std::error_condition();
             });
         if (!found)
             err = db_error::key_not_found;
-
-        return std::make_pair(value, err);
+        return std::make_pair(kv, err);
     }
 
     std::error_condition walk(std::uint64_t const id, std::uint32_t const level,

@@ -33,24 +33,27 @@ class MemoryValueStore : public ValueStore<BITS>
         map_.clear();
         return std::error_condition();
     }
-    std::error_condition Get(std::uint64_t const id,
-                             std::string* str) const override
+    std::error_condition Get(std::uint64_t const offset,
+                             std::uint64_t const length,
+                             std::string* value) const override
     {
         std::lock_guard<std::mutex> lock(lock_);
         try
         {
-            str->assign(map_.at(id).second);
+            value->assign(map_.at(offset).second);
         }
         catch (std::out_of_range const&)
         {
             return make_error_condition(db_error::value_not_found);
         }
+        assert(value->size() == length);
         return std::error_condition();
     }
 
     std::error_condition Set(key_type const& key,
                              value_type const& value) override
     {
+        assert(value.ReadyForWriting());
         std::lock_guard<std::mutex> lock(lock_);
         map_[*value.offset] = std::make_pair(util::ToBytes(key), value.value);
         return std::error_condition();

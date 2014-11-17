@@ -35,7 +35,7 @@ class Buffer
         Unprocessed,
         Evicted,
         Duplicated,
-        NeedsComitting,
+        NeedsCommitting,
     };
 
     struct Value
@@ -43,6 +43,17 @@ class Buffer
         offset_type offset;
         std::string value;
         ValueState status;
+
+        bool ReadyForWriting() const
+        {
+            return status == ValueState::NeedsCommitting;
+        }
+
+        // Disk format size including length and key
+        std::uint64_t Size() const
+        {
+            return sizeof(std::uint64_t) + BITS / 8 + value.size();
+        }
     };
 
     struct ValueComparer
@@ -103,7 +114,7 @@ class Buffer
         if (it != buf_.left.end())
             buf_.left.modify_data(
                 it, boost::bimaps::_data = Value{offset, it->second.value,
-                                                 ValueState::NeedsComitting});
+                                                 ValueState::NeedsCommitting});
     }
 
     value_type Get(std::string const &key) const
@@ -204,7 +215,7 @@ const std::map<typename Buffer<BITS>::ValueState, std::string>
         {Buffer<BITS>::ValueState::Unprocessed, "Unprocessed"},
         {Buffer<BITS>::ValueState::Evicted, "Evicted"},
         {Buffer<BITS>::ValueState::Duplicated, "Duplicated"},
-        {Buffer<BITS>::ValueState::NeedsComitting, "NeedsComitting"},
+        {Buffer<BITS>::ValueState::NeedsCommitting, "NeedsComitting"},
     };
 
 }  // namespace keyvadb

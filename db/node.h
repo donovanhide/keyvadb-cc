@@ -79,7 +79,8 @@ class Node
         for (auto const& kv : keys)
         {
             pos += util::WriteBytes(kv.key, pos, str);
-            pos += string_replace<std::uint64_t>(kv.value, pos, str);
+            pos += string_replace<std::uint64_t>(kv.offset, pos, str);
+            pos += string_replace<std::uint32_t>(kv.length, pos, str);
         }
         for (auto const& cid : children_)
             pos += string_replace<std::uint64_t>(cid, pos, str);
@@ -95,7 +96,8 @@ class Node
         for (auto& kv : keys)
         {
             pos += util::ReadBytes(str, pos, kv.key);
-            pos += string_read<std::uint64_t>(str, pos, kv.value);
+            pos += string_read<std::uint64_t>(str, pos, kv.offset);
+            pos += string_read<std::uint32_t>(str, pos, kv.length);
         }
         for (auto& cid : children_)
             pos += string_read<std::uint64_t>(str, pos, cid);
@@ -162,7 +164,7 @@ class Node
         return err;
     }
 
-    bool Find(key_type const& key, std::uint64_t* value) const
+    bool Find(key_type const& key, key_value_type* value) const
     {
         auto found = std::find_if(keys.cbegin(), keys.cend(),
                                   [&key](key_value_type const& kv)
@@ -170,7 +172,7 @@ class Node
             return kv.key == key;
         });
         if (found != keys.cend())
-            *value = found->value;
+            *value = *found;
         return found != keys.cend();
     }
 
@@ -265,14 +267,15 @@ class Node
         {
             stream << std::setfill('0') << std::setw(3) << i << " ";
             stream << util::ToHex(node.keys.at(i).key) << " ";
-            if (node.keys.at(i).value == SyntheticValue)
+            if (node.keys.at(i).offset == SyntheticValue)
             {
                 stream << "Synthetic"
                        << " ";
             }
             else
             {
-                stream << node.keys.at(i).value << " ";
+                stream << node.keys.at(i).offset << " "
+                       << node.keys.at(i).length << " ";
             }
             stream << node.children_.at(i) << " " << node.children_.at(i + 1);
             stream << std::endl;

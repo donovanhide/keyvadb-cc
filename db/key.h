@@ -169,11 +169,11 @@ struct KeyValue
     using key_type = typename util::key_type;
 
     key_type key;          // Hash of actual value
-    std::uint64_t value;   // offset of actual value in values file
+    std::uint64_t offset;  // offset of actual value in values file
     std::uint32_t length;  // length of value
 
     constexpr bool IsZero() const { return key.is_zero(); }
-    constexpr bool IsSynthetic() const { return value == SyntheticValue; }
+    constexpr bool IsSynthetic() const { return offset == SyntheticValue; }
     constexpr bool operator<(KeyValue<BITS> const& rhs) const
     {
         return key < rhs.key;
@@ -189,7 +189,7 @@ struct KeyValue
     friend std::ostream& operator<<(std::ostream& stream,
                                     KeyValue<BITS> const& kv)
     {
-        stream << "Key: " << util::ToHex(kv.key) << " Value: " << kv.value;
+        stream << "Key: " << util::ToHex(kv.key) << " Value: " << kv.offset;
         return stream;
     }
 };
