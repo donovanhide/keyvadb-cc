@@ -33,8 +33,7 @@ class MemoryValueStore : public ValueStore<BITS>
         map_.clear();
         return std::error_condition();
     }
-    std::error_condition Get(std::uint64_t const offset,
-                             std::uint64_t const length,
+    std::error_condition Get(std::uint64_t const offset, std::uint64_t const,
                              std::string* value) const override
     {
         std::lock_guard<std::mutex> lock(lock_);
@@ -46,7 +45,6 @@ class MemoryValueStore : public ValueStore<BITS>
         {
             return make_error_condition(db_error::value_not_found);
         }
-        assert(value->size() == length);
         return std::error_condition();
     }
 

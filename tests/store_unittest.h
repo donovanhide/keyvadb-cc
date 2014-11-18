@@ -40,7 +40,7 @@ TYPED_TEST(StoreTest, SetAndGetValues)
     ASSERT_FALSE(this->values_->Set(key2, v2));
     std::string got1, got2;
     ASSERT_FALSE(this->values_->Get(*v1.offset, v1.Size(), &got1));
-    ASSERT_FALSE(this->values_->Get(*v2.offset, v1.Size(), &got2));
+    ASSERT_FALSE(this->values_->Get(*v2.offset, v2.Size(), &got2));
     ASSERT_EQ(value1, got1);
     ASSERT_EQ(value2, got2);
 }

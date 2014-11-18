@@ -28,14 +28,10 @@ class FileValueStore : public ValueStore<BITS>
     };
     file_type file_;
     std::atomic_uint_fast64_t size_;
-    const std::size_t value_offset_;
+    static const std::size_t value_offset;
 
    public:
-    explicit FileValueStore(file_type& file)
-        : file_(std::move(file)),
-          value_offset_(util::MaxSize() + sizeof(std::uint64_t))
-    {
-    }
+    explicit FileValueStore(file_type& file) : file_(std::move(file)) {}
     FileValueStore(const FileValueStore&) = delete;
     FileValueStore& operator=(const FileValueStore&) = delete;
 
@@ -55,13 +51,13 @@ class FileValueStore : public ValueStore<BITS>
                              std::uint64_t const length,
                              std::string* value) const override
     {
-        value->resize(length);
+        value->resize(length - value_offset);
         std::size_t bytesRead;
         std::error_condition err;
-        std::tie(bytesRead, err) = file_->ReadAt(offset, *value);
+        std::tie(bytesRead, err) = file_->ReadAt(offset + value_offset, *value);
         if (err)
             return err;
-        if (bytesRead < length)
+        if (bytesRead < value->length())
             return make_error_condition(db_error::short_read);
         return std::error_condition();
     }
@@ -70,7 +66,7 @@ class FileValueStore : public ValueStore<BITS>
                              value_type const& value) override
     {
         assert(value.ReadyForWriting());
-        auto length = value_offset_ + value.value.size();
+        auto length = value_offset + value.value.size();
         std::string str(length, '\0');
         size_t pos = 0;
         pos += string_replace<std::uint64_t>(length, pos, str);
@@ -111,7 +107,7 @@ class FileValueStore : public ValueStore<BITS>
                 pos += sizeof(length);
                 key.assign(str, pos, Bytes);
                 pos += Bytes;
-                auto valueLength = length - value_offset_;
+                auto valueLength = length - value_offset;
                 value.assign(str, pos, valueLength);
                 pos += valueLength;
                 f(key, value);
@@ -123,6 +119,9 @@ class FileValueStore : public ValueStore<BITS>
 
     std::uint64_t Size() const { return size_; }
 };
+template <std::uint32_t BITS>
+const std::size_t FileValueStore<BITS>::value_offset = util::MaxSize() +
+                                                       sizeof(std::uint64_t);
 
 template <std::uint32_t BITS>
 class FileKeyStore : public KeyStore<BITS>
@@ -142,7 +141,9 @@ class FileKeyStore : public KeyStore<BITS>
 
    public:
     FileKeyStore(std::uint32_t const block_size, file_type& file)
-        : block_size_(block_size), degree_(84), file_(std::move(file))
+        : block_size_(block_size),
+          degree_(node_type::CalculateDegree(block_size)),
+          file_(std::move(file))
     {
     }
     FileKeyStore(const FileKeyStore&) = delete;
