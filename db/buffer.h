@@ -16,14 +16,22 @@
 
 namespace keyvadb
 {
-// A threadsafe container for storing keys, values and the offset of the key and
-// values in the values file. A Value field might contain an empty offset or an
-// empty string but never both. Values with empty strings are being evicted from
+template <std::uint32_t BITS>
+class ValueStore;  // Forward Declaration
+
+// A threadsafe container for storing keys, values and the offset of the key
+// and
+// values in the values file. A Value field might contain an empty offset or
+// an
+// empty string but never both. Values with empty strings are being evicted
+// from
 // a Node to one of its children, while a Value with an empty offset has not
-// been yet assigned an offset in the values file. This complicated state is to
+// been yet assigned an offset in the values file. This complicated state is
+// to
 // facilitate write-buffering.
 // The entries can be iterated in either key order, for when keys are being
-// added to the tree, and value offset order, for when the keys and values are
+// added to the tree, and value offset order, for when the keys and values
+// are
 // being streamed to the values file.
 template <std::uint32_t BITS>
 class Buffer
@@ -34,8 +42,9 @@ class Buffer
     {
         Unprocessed,
         Evicted,
-        Duplicated,
+        Duplicate,
         NeedsCommitting,
+        Committed,
     };
 
     struct Value
@@ -78,6 +87,7 @@ class Buffer
     using const_iterator = typename map_type::left_const_iterator;
     using key_value_type = typename map_type::value_type;
     using left_key_value_type = typename map_type::left_value_type;
+    using value_store_ptr = std::shared_ptr<ValueStore<BITS>>;
 
     static const std::string emptyBufferValue;
     static const std::map<ValueState, std::string> valueStates;
@@ -104,7 +114,7 @@ class Buffer
         if (it != buf_.left.end())
             buf_.left.modify_data(it, boost::bimaps::_data = Value{
                                           it->second.offset, it->second.value,
-                                          ValueState::Duplicated});
+                                          ValueState::Duplicate});
     }
 
     void SetOffset(key_type const &key, offset_type const offset)
@@ -126,10 +136,33 @@ class Buffer
         return boost::none;
     }
 
+    std::error_condition Commit(value_store_ptr const &values,
+                                std::size_t const batchSize)
+    {
+        while (true)
+        {
+            std::lock_guard<std::mutex> lock(mtx_);
+            for (std::size_t i = 0; i < batchSize; i++)
+            {
+                auto it =
+                    buf_.right.lower_bound(Value{boost::none, emptyBufferValue,
+                                                 ValueState::NeedsCommitting});
+                if (it == buf_.right.end() ||
+                    it->first.status != ValueState::NeedsCommitting)
+                    return std::error_condition();
+                if (auto err = values->Set(it->second, it->first))
+                    return err;
+                assert(buf_.right.modify_key(
+                    it, boost::bimaps::_key =
+                            Value{it->first.offset, it->first.value,
+                                  ValueState::Committed}));
+            }
+        }
+    }
+
     void Purge()
     {
         std::lock_guard<std::mutex> lock(mtx_);
-        offset_type emptyOffset;
         auto it = buf_.right.lower_bound(
             Value{boost::none, emptyBufferValue, ValueState::Evicted});
         buf_.right.erase(it, buf_.right.end());
@@ -214,8 +247,9 @@ const std::map<typename Buffer<BITS>::ValueState, std::string>
     Buffer<BITS>::valueStates{
         {Buffer<BITS>::ValueState::Unprocessed, "Unprocessed"},
         {Buffer<BITS>::ValueState::Evicted, "Evicted"},
-        {Buffer<BITS>::ValueState::Duplicated, "Duplicated"},
-        {Buffer<BITS>::ValueState::NeedsCommitting, "NeedsComitting"},
+        {Buffer<BITS>::ValueState::Duplicate, "Duplicate"},
+        {Buffer<BITS>::ValueState::NeedsCommitting, "NeedsCommitting"},
+        {Buffer<BITS>::ValueState::Committed, "Committed"},
     };
 
 }  // namespace keyvadb

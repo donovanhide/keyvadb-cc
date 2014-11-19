@@ -20,12 +20,12 @@ class MemoryValueStore : public ValueStore<BITS>
         std::function<void(std::string const&, std::string const&)>;
 
    private:
-    std::atomic_uint_fast64_t id_;
+    std::atomic_uint_fast64_t size_;
     std::unordered_map<std::uint64_t, std::pair<std::string, std::string>> map_;
     mutable std::mutex lock_;
 
    public:
-    MemoryValueStore() : id_(0) {}
+    MemoryValueStore() : size_(0) {}
     std::error_condition Open() override { return std::error_condition(); }
     std::error_condition Close() override { return std::error_condition(); }
     std::error_condition Clear() override
@@ -54,20 +54,21 @@ class MemoryValueStore : public ValueStore<BITS>
         assert(value.ReadyForWriting());
         std::lock_guard<std::mutex> lock(lock_);
         map_[*value.offset] = std::make_pair(util::ToBytes(key), value.value);
+        size_ += value.Size();
         return std::error_condition();
     };
 
     std::error_condition Each(key_value_func f) const override
     {
         std::lock_guard<std::mutex> lock(lock_);
-        for (uint64_t i = 0; i < id_; i++)
+        for (uint64_t i = 0; i < size_; i++)
         {
             auto kv = map_.at(i);
             f(kv.first, kv.second);
         }
         return std::error_condition();
     }
-    std::uint64_t Size() const { return id_; }
+    std::uint64_t Size() const { return size_; }
 };
 
 template <std::uint32_t BITS>

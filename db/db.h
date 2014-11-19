@@ -156,7 +156,7 @@ class DB
         journal_type journal(buffer_, keys_, values_);
         if (auto err = journal.Process(tree_))
             return err;
-        if (auto err = journal.Commit(tree_))
+        if (auto err = journal.Commit(tree_, 100))  // TODO: Make a tunable
             return err;
         if (log_.info)
             log_.info << "Flushed: " << buffer_.Size() << " keys into "

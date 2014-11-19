@@ -70,26 +70,31 @@ class Delta
         current_->SetChild(i, cid);
     }
 
-    void AddKeys(buffer_type& buffer, std::uint64_t offset)
+    std::uint64_t AddKeys(buffer_type& buffer, std::uint64_t offset)
     {
-        // Full node, nothing to do
-        if (current_->EmptyKeyCount() == 0)
-            return;
         auto N = current_->MaxKeys();
         auto candidates = buffer.GetRange(current_->First(), current_->Last());
         std::set<KeyValue<BITS>> existing(current_->NonZeroBegin(),
                                           current_->keys.cend());
+
         existing_ = existing.size();
+
+        std::vector<KeyValue<BITS>> dupes;
+        std::set_intersection(candidates.cbegin(), candidates.cend(),
+                              existing.cbegin(), existing.cend(),
+                              std::back_inserter(dupes));
+        for (auto const& kv : dupes)
+        {
+            buffer.SetDuplicate(kv.key);
+            candidates.erase(kv);
+        }
+        if (candidates.size() == 0 || current_->EmptyKeyCount() == 0)
+            // Nothing to do
+            return offset;
+
         std::set<KeyValue<BITS>> combined(candidates);
         std::copy(existing.cbegin(), existing.cend(),
                   std::inserter(combined, combined.end()));
-
-        if (existing_ == combined.size())
-        {
-            // All dupes
-            for (const auto& kv : candidates) buffer.SetDuplicate(kv.key);
-            return;
-        }
         Flip();
         if (combined.size() <= N)
         {
@@ -98,8 +103,11 @@ class Delta
                                current_->keys.end());
             insertions_ = combined.size() - existing_;
             for (const auto& kv : candidates)
-                buffer.SetOffset(kv.key, offset++);
-            return;
+            {
+                buffer.SetOffset(kv.key, offset);
+                offset += kv.Size();
+            }
+            return offset;
         }
         // Handle overflowing node
         current_->Clear();
@@ -127,16 +135,19 @@ class Delta
             if (candidates.count(kv) > 0)
             {
                 insertions_++;
-                buffer.SetOffset(kv.key, offset++);
+                buffer.SetOffset(kv.key, offset);
+                offset += kv.Size();
             }
             existing.erase(kv);
         }
         for (auto const& kv : existing)
         {
+            if (kv.IsSynthetic())
+                continue;
             evictions_++;
             buffer.AddEvictee(kv.key, kv.offset);
         }
-        return;
+        return offset;
     }
 
     friend std::ostream& operator<<(std::ostream& stream, const Delta& delta)

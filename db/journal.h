@@ -52,8 +52,10 @@ class Journal
         return process(root, 0);
     }
 
-    std::error_condition Commit(tree_type& tree)
+    std::error_condition Commit(tree_type& tree, std::size_t const batchSize)
     {
+        if (auto err = buffer_.Commit(values_, batchSize))
+            return err;
         // write deepest nodes first so that no parent can refer
         // to a non-existent child
         for (auto it = deltas_.crbegin(), end = deltas_.crend(); it != end;
@@ -91,7 +93,7 @@ class Journal
                                  std::uint32_t const level)
     {
         delta_type delta(node);
-        delta.AddKeys(buffer_, offset_);
+        offset_ = delta.AddKeys(buffer_, offset_);
         delta.CheckSanity();
         if (delta.Current()->EmptyKeyCount() == 0)
         {

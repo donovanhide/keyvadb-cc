@@ -172,6 +172,12 @@ struct KeyValue
     std::uint64_t offset;  // offset of actual value in values file
     std::uint32_t length;  // length of value
 
+    // Disk format size including length and key
+    std::uint64_t Size() const
+    {
+        return sizeof(std::uint64_t) + BITS / 8 + length;
+    }
+
     constexpr bool IsZero() const { return key.is_zero(); }
     constexpr bool IsSynthetic() const { return offset == SyntheticValue; }
     constexpr bool operator<(KeyValue<BITS> const& rhs) const

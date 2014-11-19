@@ -72,7 +72,7 @@ class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits>
         return std::make_unique<journal_type>(buffer_, keys_, values_);
     }
 
-    random_type RandomKeyValues(std::size_t n, std::uint32_t seed)
+    random_type RandomKeyValues(std::size_t const n, std::uint32_t const seed)
     {
         random_type pairs;
         for (auto const& key : this->RandomKeys(n, seed))
@@ -81,6 +81,19 @@ class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits>
             pairs.emplace_back(keyBytes, keyBytes);
         }
         return pairs;
+    }
+
+    void CheckRandomKeyValues(tree_ptr const& tree, std::size_t n,
+                              std::uint32_t seed)
+    {
+        for (auto const& key : this->RandomKeys(n, seed))
+        {
+            key_value_type got;
+            std::error_condition err;
+            std::tie(got, err) = tree->Get(key);
+            ASSERT_FALSE(err);
+            ASSERT_EQ(key, got.key);
+        }
     }
 
     void checkTree(tree_ptr const& tree)
