@@ -149,17 +149,15 @@ class DB
    private:
     std::error_condition flush()
     {
-        if (log_.info)
-            log_.info << "Flushing approximately: " << buffer_.Size()
-                      << " keys";
         journal_type journal(buffer_, keys_, values_);
         if (auto err = journal.Process(tree_))
             return err;
+        if (log_.info)
+            log_.info << "Flushing: " << buffer_.ReadyForCommitting() << "/"
+                      << buffer_.Size() << " keys into " << journal.Size()
+                      << " nodes";
         if (auto err = journal.Commit(tree_, 100))  // TODO: Make a tunable
             return err;
-        if (log_.info)
-            log_.info << "Flushed: " << buffer_.Size() << " keys into "
-                      << journal.Size() << " nodes";
         return std::error_condition();
     }
 

@@ -81,6 +81,7 @@ class FileValueStore : public ValueStore<BITS>
             return err;
         if (bytesWritten != length)
             return make_error_condition(db_error::short_write);
+        size_ += bytesWritten;
         return std::error_condition();
     }
 

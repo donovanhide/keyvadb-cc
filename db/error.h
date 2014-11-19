@@ -12,7 +12,8 @@ enum db_error
     key_wrong_length,
     value_too_long,
     short_read,
-    short_write
+    short_write,
+    bad_commit,
 };
 
 class db_category : public std::error_category
@@ -35,6 +36,8 @@ class db_category : public std::error_category
             return "Short Read";
         case db_error::short_write:
             return "Short Write";
+        case db_error::bad_commit:
+            return "Bad Commit";
         default:
             return "Unknown error";
         }

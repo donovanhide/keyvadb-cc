@@ -13,6 +13,7 @@
 #include <mutex>
 #include <algorithm>
 #include "db/key.h"
+#include "db/error.h"
 
 namespace keyvadb
 {
@@ -81,8 +82,9 @@ class Buffer
     using util = detail::KeyUtil<BITS>;
     using key_type = typename util::key_type;
     using value_type = boost::optional<std::string>;
-    using map_type = boost::bimap<boost::bimaps::set_of<key_type>,
-                                  boost::bimaps::set_of<Value, ValueComparer>>;
+    using map_type =
+        boost::bimap<boost::bimaps::set_of<key_type>,
+                     boost::bimaps::multiset_of<Value, ValueComparer>>;
     using const_iterator = typename map_type::left_const_iterator;
     using key_value_type = typename map_type::value_type;
     using left_key_value_type = typename map_type::left_value_type;
@@ -141,6 +143,7 @@ class Buffer
         {
             // std::cout << *this;
             std::lock_guard<std::mutex> lock(mtx_);
+
             for (std::size_t i = 0; i < batchSize; i++)
             {
                 auto it = buf_.right.lower_bound(
@@ -148,22 +151,20 @@ class Buffer
                 if (it == buf_.right.end() ||
                     it->first.status != ValueState::NeedsCommitting)
                     return std::error_condition();
-
                 if (auto err = values->Set(it->second, it->first))
                     return err;
 
-                std::cout << "Committing: " << i << ":"
-                          << valueStates.at(it->first.status) << ":"
-                          << util::ToHex(it->second) << ":" << buf_.size()
-                          << std::endl;
-                // assert(buf_.right.erase(it) != buf_.right.end());
-                assert(buf_.right.replace_key(
-                    it, Value{it->first.offset, it->first.value,
-                              ValueState::Committed}));
-                // assert(buf_.right.modify_key(
-                //     it, boost::bimaps::_key =
-                //             Value{it->first.offset, it->first.value,
-                //                   ValueState::Committed}));
+                // std::cout << "Committing: " << i << ":"
+                //           << valueStates.at(it->first.status) << ":"
+                //           << util::ToHex(it->second) << ":" << buf_.size()
+                //           << std::endl;
+                auto modified = buf_.right.modify_key(
+                    it, boost::bimaps::_key =
+                            Value{it->first.offset, it->first.value,
+                                  ValueState::Committed});
+
+                if (!modified)
+                    return make_error_condition(db_error::bad_commit);
             }
         }
     }
@@ -197,6 +198,16 @@ class Buffer
     {
         std::lock_guard<std::mutex> lock(mtx_);
         return buf_.size();
+    }
+
+    std::size_t ReadyForCommitting() const
+    {
+        std::lock_guard<std::mutex> lock(mtx_);
+        auto first = buf_.right.lower_bound(
+            Value{0, emptyBufferValue, ValueState::NeedsCommitting});
+        auto last = buf_.right.lower_bound(
+            Value{0, emptyBufferValue, ValueState::Committed});
+        return std::distance(first, last);
     }
 
     // Returns true if there are values greater than first and less than
@@ -233,7 +244,8 @@ class Buffer
                     std::string const &value, ValueState const &status)
     {
         std::lock_guard<std::mutex> lock(mtx_);
-        buf_.insert(key_value_type(key, Value{offset, value, status}));
+        if (buf_.left.find(key) == buf_.left.end())
+            buf_.insert(key_value_type(key, Value{offset, value, status}));
         return buf_.size();
     }
 
