@@ -8,6 +8,7 @@
 #include "db/cache.h"
 #include "db/env.h"
 #include "db/encoding.h"
+#include "db/error.h"
 
 namespace keyvadb
 {

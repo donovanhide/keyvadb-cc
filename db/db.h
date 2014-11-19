@@ -73,22 +73,9 @@ class DB
 
     ~DB()
     {
-        close_ = true;
-        try
-        {
-            thread_.join();
-            if (auto err = values_->Close())
-                if (log_.error)
-                    log_.error << "Closing values file: " << err.message();
-            if (auto err = keys_->Close())
-                if (log_.error)
-                    log_.error << "Closing keys file: " << err.message();
-        }
-        catch (std::exception &ex)
-        {
+        if (auto err = Close())
             if (log_.error)
-                log_.error << "Destructor exception: " << ex.what();
-        }
+                log_.error << "Destroying DB: " << err.message();
     }
 
     // Not threadsafe
@@ -112,6 +99,17 @@ class DB
         return values_->Clear();
     }
 
+    // Not threadsafe
+    std::error_condition Close()
+    {
+        if (close_.exchange(true))
+            return std::error_condition();
+        thread_.join();
+        if (auto err = values_->Close())
+            return err;
+        return keys_->Close();
+    }
+
     std::error_condition Get(std::string const &key, std::string *value)
     {
         if (key.length() != key_length)
@@ -131,7 +129,7 @@ class DB
             return err;
         if (log_.debug)
             log_.debug << "Get: " << boost::algorithm::hex(key) << ":" << kv;
-        return values_->Get(kv.offset, kv.length, value);
+        return values_->Get(kv.offset, kv.Size(), value);
     }
 
     std::error_condition Put(std::string const &key, std::string const &value)

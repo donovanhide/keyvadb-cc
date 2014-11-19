@@ -83,6 +83,7 @@ class Delta
         std::set_intersection(candidates.cbegin(), candidates.cend(),
                               existing.cbegin(), existing.cend(),
                               std::back_inserter(dupes));
+        // Remove dupes
         for (auto const& kv : dupes)
         {
             buffer.SetDuplicate(kv.key);
@@ -92,24 +93,27 @@ class Delta
             // Nothing to do
             return offset;
 
+        Flip();
+        if (existing.size() + candidates.size() <= N)
+        {
+            // Won't overflow copy and sort
+            insertions_ = candidates.size();
+            auto last = std::copy(candidates.cbegin(), candidates.cend(),
+                                  current_->keys.begin());
+            for (auto it = current_->keys.begin(); it != last; ++it)
+            {
+                buffer.SetOffset(it->key, offset);
+                it->offset = offset;
+                offset += it->Size();
+            }
+            std::sort(current_->keys.begin(), current_->keys.end());
+            return offset;
+        }
+
+        // Handle overflowing node
         std::set<KeyValue<BITS>> combined(candidates);
         std::copy(existing.cbegin(), existing.cend(),
                   std::inserter(combined, combined.end()));
-        Flip();
-        if (combined.size() <= N)
-        {
-            // Won't overflow copy right
-            std::copy_backward(combined.cbegin(), combined.cend(),
-                               current_->keys.end());
-            insertions_ = combined.size() - existing_;
-            for (const auto& kv : candidates)
-            {
-                buffer.SetOffset(kv.key, offset);
-                offset += kv.Size();
-            }
-            return offset;
-        }
-        // Handle overflowing node
         current_->Clear();
         auto stride = current_->Stride();
         std::size_t index = 0;
@@ -128,7 +132,7 @@ class Delta
             index = nearest;
         }
         synthetics_ = current_->AddSyntheticKeyValues();
-        for (auto const& kv : current_->keys)
+        for (auto& kv : current_->keys)
         {
             if (kv.IsSynthetic())
                 continue;
@@ -136,6 +140,7 @@ class Delta
             {
                 insertions_++;
                 buffer.SetOffset(kv.key, offset);
+                kv.offset = offset;
                 offset += kv.Size();
             }
             existing.erase(kv);

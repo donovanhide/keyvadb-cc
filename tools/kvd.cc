@@ -30,10 +30,9 @@ FwdIt for_each_line(FwdIt first, FwdIt last, Function f)
 
 int main()
 {
-    DB<FileStoragePolicy<256>> db("kvd.keys", "kvd.values", 4096, 700);
-    // 1024 * 1024 * 1024 / 4096);
-    // DB<FileStoragePolicy<256>, StandardLog> db("kvd.keys", "kvd.values",
-    // 4096);
+    // DB<FileStoragePolicy<256>> db("kvd.keys", "kvd.values", 4096, 700);
+    DB<FileStoragePolicy<256>, StandardLog> db("kvd.keys", "kvd.values", 4096,
+                                               700);
     // DB<MemoryStoragePolicy<256>> db(85);
     if (auto err = db.Open())
     {

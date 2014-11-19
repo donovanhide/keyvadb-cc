@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <utility>
 #include "db/store.h"
+#include "db/error.h"
 
 namespace keyvadb
 {
@@ -21,7 +22,7 @@ class MemoryValueStore : public ValueStore<BITS>
 
    private:
     std::atomic_uint_fast64_t size_;
-    std::unordered_map<std::uint64_t, std::pair<std::string, std::string>> map_;
+    std::map<std::uint64_t, std::pair<std::string, std::string>> map_;
     mutable std::mutex lock_;
 
    public:
@@ -61,13 +62,10 @@ class MemoryValueStore : public ValueStore<BITS>
     std::error_condition Each(key_value_func f) const override
     {
         std::lock_guard<std::mutex> lock(lock_);
-        for (uint64_t i = 0; i < size_; i++)
-        {
-            auto kv = map_.at(i);
-            f(kv.first, kv.second);
-        }
+        for (auto const& kv : map_) f(kv.second.first, kv.second.second);
         return std::error_condition();
     }
+
     std::uint64_t Size() const { return size_; }
 };
 

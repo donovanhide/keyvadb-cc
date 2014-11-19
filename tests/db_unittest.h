@@ -117,12 +117,22 @@ TYPED_TEST(DBTest, Bulk)
     t3.join();
     t4.join();
     std::set<std::string> unique(keys.begin(), keys.end());
+    ASSERT_FALSE(this->db.Close());
+    ASSERT_FALSE(this->db.Open());
+    for (const auto& key : unique)
+    {
+        std::string value;
+        ASSERT_FALSE(this->db.Get(key, &value));
+        this->CompareKeys(key, value.substr(0, 32));
+    }
     std::uint32_t i = 0;
-    this->db.Each([&](std::string const& key, std::string const& value)
-                  {
-                      this->CompareKeys(key, value.substr(0, 32));
-                      ASSERT_TRUE(unique.find(key) != unique.end());
-                      i++;
-                  });
+    auto err =
+        this->db.Each([&](std::string const& key, std::string const& value)
+                      {
+                          this->CompareKeys(key, value.substr(0, 32));
+                          ASSERT_TRUE(unique.find(key) != unique.end());
+                          i++;
+                      });
+    ASSERT_FALSE(err);
     ASSERT_EQ(numKeys, i);
 }
