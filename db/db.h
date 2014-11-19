@@ -62,6 +62,7 @@ class DB
         : log_(Log{}),
           keys_(Storage::CreateKeyStore(valueFileName, blockSize)),
           values_(Storage::CreateValueStore(keyFileName)),
+          cache_(),
           tree_(keys_, cache_),
           close_(false),
           thread_(&DB::flushThread, this)

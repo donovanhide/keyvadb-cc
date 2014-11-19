@@ -49,7 +49,7 @@ class Buffer
 
     struct Value
     {
-        offset_type offset;
+        std::uint64_t offset;
         std::string value;
         ValueState status;
 
@@ -81,9 +81,8 @@ class Buffer
     using util = detail::KeyUtil<BITS>;
     using key_type = typename util::key_type;
     using value_type = boost::optional<std::string>;
-    using map_type =
-        boost::bimap<boost::bimaps::set_of<key_type>,
-                     boost::bimaps::multiset_of<Value, ValueComparer>>;
+    using map_type = boost::bimap<boost::bimaps::set_of<key_type>,
+                                  boost::bimaps::set_of<Value, ValueComparer>>;
     using const_iterator = typename map_type::left_const_iterator;
     using key_value_type = typename map_type::value_type;
     using left_key_value_type = typename map_type::left_value_type;
@@ -98,8 +97,7 @@ class Buffer
    public:
     std::size_t Add(std::string const &key, std::string const &value)
     {
-        return add(util::FromBytes(key), boost::none, value,
-                   ValueState::Unprocessed);
+        return add(util::FromBytes(key), 0, value, ValueState::Unprocessed);
     }
 
     std::size_t AddEvictee(key_type const &key, std::uint64_t const offset)
@@ -117,7 +115,7 @@ class Buffer
                                           ValueState::Duplicate});
     }
 
-    void SetOffset(key_type const &key, offset_type const offset)
+    void SetOffset(key_type const &key, std::uint64_t const offset)
     {
         std::lock_guard<std::mutex> lock(mtx_);
         auto it = buf_.left.find(key);
@@ -141,21 +139,31 @@ class Buffer
     {
         while (true)
         {
+            // std::cout << *this;
             std::lock_guard<std::mutex> lock(mtx_);
             for (std::size_t i = 0; i < batchSize; i++)
             {
-                auto it =
-                    buf_.right.lower_bound(Value{boost::none, emptyBufferValue,
-                                                 ValueState::NeedsCommitting});
+                auto it = buf_.right.lower_bound(
+                    Value{0, emptyBufferValue, ValueState::NeedsCommitting});
                 if (it == buf_.right.end() ||
                     it->first.status != ValueState::NeedsCommitting)
                     return std::error_condition();
+
                 if (auto err = values->Set(it->second, it->first))
                     return err;
-                assert(buf_.right.modify_key(
-                    it, boost::bimaps::_key =
-                            Value{it->first.offset, it->first.value,
-                                  ValueState::Committed}));
+
+                std::cout << "Committing: " << i << ":"
+                          << valueStates.at(it->first.status) << ":"
+                          << util::ToHex(it->second) << ":" << buf_.size()
+                          << std::endl;
+                // assert(buf_.right.erase(it) != buf_.right.end());
+                assert(buf_.right.replace_key(
+                    it, Value{it->first.offset, it->first.value,
+                              ValueState::Committed}));
+                // assert(buf_.right.modify_key(
+                //     it, boost::bimaps::_key =
+                //             Value{it->first.offset, it->first.value,
+                //                   ValueState::Committed}));
             }
         }
     }
@@ -164,7 +172,7 @@ class Buffer
     {
         std::lock_guard<std::mutex> lock(mtx_);
         auto it = buf_.right.lower_bound(
-            Value{boost::none, emptyBufferValue, ValueState::Evicted});
+            Value{0, emptyBufferValue, ValueState::Evicted});
         buf_.right.erase(it, buf_.right.end());
     }
 
@@ -205,22 +213,23 @@ class Buffer
     {
         stream << "Buffer" << std::endl;
         std::lock_guard<std::mutex> lock(buffer.mtx_);
-        for (auto const &kv : buffer.buf_)
-            stream << util::ToHex(kv.left) << ":" << kv.right.offset << ":"
-                   << boost::algorithm::hex(kv.right.value) << ":"
-                   << valueStates.at(kv.right.status) << std::endl;
-        stream << "--------" << std::endl;
+        // for (auto const &kv : buffer.buf_)
+        //     stream << util::ToHex(kv.left) << ":" << kv.right.offset << ":"
+        //            << valueStates.at(kv.right.status) << ":" <<
+        //            kv.right.Size()
+        //            << std::endl;
+        // stream << "--------" << std::endl;
         for (auto it = buffer.buf_.right.begin(); it != buffer.buf_.right.end();
              ++it)
             stream << util::ToHex(it->second) << ":" << it->first.offset << ":"
-                   << boost::algorithm::hex(it->first.value) << ":"
-                   << valueStates.at(it->first.status) << std::endl;
+                   << valueStates.at(it->first.status) << ":"
+                   << it->first.Size() << std::endl;
         stream << "--------" << std::endl;
         return stream;
     }
 
    private:
-    std::size_t add(key_type const &key, offset_type const &offset,
+    std::size_t add(key_type const &key, std::uint64_t const &offset,
                     std::string const &value, ValueState const &status)
     {
         std::lock_guard<std::mutex> lock(mtx_);

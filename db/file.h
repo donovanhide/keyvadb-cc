@@ -76,7 +76,7 @@ class FileValueStore : public ValueStore<BITS>
         str.replace(pos, value.value.size(), value.value);
         std::size_t bytesWritten;
         std::error_condition err;
-        std::tie(bytesWritten, err) = file_->WriteAt(str, *value.offset);
+        std::tie(bytesWritten, err) = file_->WriteAt(str, value.offset);
         if (err)
             return err;
         if (bytesWritten != length)

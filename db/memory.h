@@ -54,7 +54,7 @@ class MemoryValueStore : public ValueStore<BITS>
     {
         assert(value.ReadyForWriting());
         std::lock_guard<std::mutex> lock(lock_);
-        map_[*value.offset] = std::make_pair(util::ToBytes(key), value.value);
+        map_[value.offset] = std::make_pair(util::ToBytes(key), value.value);
         size_ += value.Size();
         return std::error_condition();
     };
