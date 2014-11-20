@@ -73,7 +73,10 @@ class Delta
     std::uint64_t AddKeys(buffer_type& buffer, std::uint64_t offset)
     {
         auto N = current_->MaxKeys();
-        auto candidates = buffer.GetRange(current_->First(), current_->Last());
+        std::set<KeyValue<BITS>> candidates;
+        std::set<KeyValue<BITS>> evictions;
+        std::tie(candidates, evictions) =
+            buffer.GetCandidates(current_->First(), current_->Last());
         std::set<KeyValue<BITS>> existing(current_->NonZeroBegin(),
                                           current_->keys.cend());
 
@@ -89,19 +92,22 @@ class Delta
             buffer.SetDuplicate(kv.key);
             candidates.erase(kv);
         }
-        if (candidates.size() == 0 || current_->EmptyKeyCount() == 0)
+        if ((candidates.size() == 0 && evictions.size() == 0) ||
+            current_->EmptyKeyCount() == 0)
             // Nothing to do
             return offset;
 
         Flip();
-        if (existing.size() + candidates.size() <= N)
+        if (existing.size() + candidates.size() + evictions.size() <= N)
         {
             // Won't overflow copy and sort
             insertions_ = candidates.size();
-            auto last = std::copy(candidates.cbegin(), candidates.cend(),
-                                  current_->keys.begin());
-            for (auto it = current_->keys.begin(); it != last; ++it)
+            auto lastCandidate = std::copy(
+                candidates.cbegin(), candidates.cend(), current_->keys.begin());
+            std::copy(evictions.cbegin(), evictions.cend(), lastCandidate);
+            for (auto it = current_->keys.begin(); it != lastCandidate; ++it)
             {
+                insertions_++;
                 buffer.SetOffset(it->key, offset);
                 it->offset = offset;
                 offset += it->Size();
@@ -112,6 +118,8 @@ class Delta
 
         // Handle overflowing node
         std::set<KeyValue<BITS>> combined(candidates);
+        std::copy(evictions.cbegin(), evictions.cend(),
+                  std::inserter(combined, combined.end()));
         std::copy(existing.cbegin(), existing.cend(),
                   std::inserter(combined, combined.end()));
         current_->Clear();

@@ -22,13 +22,15 @@ TYPED_TEST(StoreTest, TreeOperations)
             // Use j as seed
             auto input = this->RandomKeyValues(n, j);
             for (auto const& kv : input) this->buffer_.Add(kv.first, kv.second);
-            // std::cout << this->buffer_;
+            // std::cout << "Add" << this->buffer_;
             ASSERT_EQ(n, this->buffer_.Size());
             auto journal = this->GetJournal();
             ASSERT_FALSE(journal->Process(*tree));
+            // std::cout << "Process" << this->buffer_;
             this->checkTree(tree);
             // std::cout << this->buffer_;
             ASSERT_FALSE(journal->Commit(*tree, 5));
+            // std::cout << "Commit" << this->buffer_;
             this->checkTree(tree);
             this->CheckRandomKeyValues(tree, n, j);
             // std::cout << *tree;

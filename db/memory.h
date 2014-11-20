@@ -32,6 +32,7 @@ class MemoryValueStore : public ValueStore<BITS>
     std::error_condition Clear() override
     {
         map_.clear();
+        size_ = 0;
         return std::error_condition();
     }
     std::error_condition Get(std::uint64_t const offset, std::uint64_t const,

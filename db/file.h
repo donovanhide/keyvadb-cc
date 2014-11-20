@@ -68,6 +68,14 @@ class FileValueStore : public ValueStore<BITS>
     {
         assert(value.ReadyForWriting());
         auto length = value_offset + value.value.size();
+        // std::cout << util::ToHex(key) << ":" << value.value.size() <<
+        // std::endl;
+        if (value.value.size() == 0)
+            throw std::runtime_error("zero length value for key: " +
+                                     util::ToHex(key));
+        if (value.offset < size_)
+            throw std::runtime_error("attempted to write before end of file: " +
+                                     util::ToHex(key));
         std::string str(length, '\0');
         size_t pos = 0;
         pos += string_replace<std::uint64_t>(length, pos, str);

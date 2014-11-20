@@ -89,6 +89,7 @@ class Buffer
     using key_value_type = typename map_type::value_type;
     using left_key_value_type = typename map_type::left_value_type;
     using value_store_ptr = std::shared_ptr<ValueStore<BITS>>;
+    using candidate_type = std::set<KeyValue<BITS>>;
 
     static const std::string emptyBufferValue;
     static const std::map<ValueState, std::string> valueStates;
@@ -99,32 +100,47 @@ class Buffer
    public:
     std::size_t Add(std::string const &key, std::string const &value)
     {
+        // std::cout << "Add: " << util::ToHex(util::FromBytes(key)) <<
+        // std::endl;
         return add(util::FromBytes(key), 0, value, ValueState::Unprocessed);
     }
 
     std::size_t AddEvictee(key_type const &key, std::uint64_t const offset)
     {
-        return add(key, offset, emptyBufferValue, ValueState::Evicted);
+        // std::cout << "Evicted: " << util::ToHex(key) << ":" << offset
+        // << std::endl;
+        auto size = add(key, offset, emptyBufferValue, ValueState::Evicted);
+        return size;
     }
 
     void SetDuplicate(key_type const &key)
     {
+        // std::cout << "Duplicated: " << util::ToHex(key) << std::endl;
         std::lock_guard<std::mutex> lock(mtx_);
         auto it = buf_.left.find(key);
-        if (it != buf_.left.end())
-            buf_.left.modify_data(it, boost::bimaps::_data = Value{
-                                          it->second.offset, it->second.value,
-                                          ValueState::Duplicate});
+        if (it == buf_.left.end())
+            throw std::runtime_error("Bad SetDuplicate");
+        auto modified = buf_.left.modify_data(
+            it,
+            boost::bimaps::_data = Value{it->second.offset, it->second.value,
+                                         ValueState::Duplicate});
+        if (!modified)
+            throw std::runtime_error("Bad SetDuplicate");
     }
 
     void SetOffset(key_type const &key, std::uint64_t const offset)
     {
+        // std::cout << "SetOffset: " << util::ToHex(key) << ":" << offset
+        // << std::endl;
         std::lock_guard<std::mutex> lock(mtx_);
         auto it = buf_.left.find(key);
-        if (it != buf_.left.end())
-            buf_.left.modify_data(
-                it, boost::bimaps::_data = Value{offset, it->second.value,
-                                                 ValueState::NeedsCommitting});
+        if (it == buf_.left.end())
+            throw std::runtime_error("Bad SetOffset");
+        auto modified = buf_.left.modify_data(
+            it, boost::bimaps::_data = Value{offset, it->second.value,
+                                             ValueState::NeedsCommitting});
+        if (!modified)
+            throw std::runtime_error("Bad SetOffset");
     }
 
     value_type Get(std::string const &key) const
@@ -143,7 +159,6 @@ class Buffer
         {
             // std::cout << *this;
             std::lock_guard<std::mutex> lock(mtx_);
-
             for (std::size_t i = 0; i < batchSize; i++)
             {
                 auto it = buf_.right.lower_bound(
@@ -151,45 +166,56 @@ class Buffer
                 if (it == buf_.right.end() ||
                     it->first.status != ValueState::NeedsCommitting)
                     return std::error_condition();
-                if (auto err = values->Set(it->second, it->first))
-                    return err;
-
                 // std::cout << "Committing: " << i << ":"
                 //           << valueStates.at(it->first.status) << ":"
                 //           << util::ToHex(it->second) << ":" << buf_.size()
                 //           << std::endl;
+                if (auto err = values->Set(it->second, it->first))
+                    return err;
                 auto modified = buf_.right.modify_key(
                     it, boost::bimaps::_key =
                             Value{it->first.offset, it->first.value,
                                   ValueState::Committed});
-
                 if (!modified)
-                    return make_error_condition(db_error::bad_commit);
+                    throw std::runtime_error("Bad Commit");
             }
         }
     }
 
     void Purge()
     {
-        std::lock_guard<std::mutex> lock(mtx_);
-        auto it = buf_.right.lower_bound(
-            Value{0, emptyBufferValue, ValueState::Evicted});
-        buf_.right.erase(it, buf_.right.end());
+        {
+            std::lock_guard<std::mutex> lock(mtx_);
+            auto it = buf_.right.lower_bound(
+                Value{0, emptyBufferValue, ValueState::Evicted});
+            buf_.right.erase(it, buf_.right.end());
+        }
     }
 
     // Returns all
-    std::set<KeyValue<BITS>> GetRange(key_type const &firstKey,
-                                      key_type const &lastKey)
+    std::pair<candidate_type, candidate_type> GetCandidates(
+        key_type const &firstKey, key_type const &lastKey)
     {
-        std::set<KeyValue<BITS>> range;
+        std::set<KeyValue<BITS>> candidates;
+        std::set<KeyValue<BITS>> evictions;
         std::lock_guard<std::mutex> lock(mtx_);
         std::for_each(lower(firstKey), upper(lastKey),
-                      [&range](left_key_value_type const &kv)
+                      [&candidates, &evictions](left_key_value_type const &kv)
                       {
-            range.emplace(KeyValue<BITS>{
-                kv.first, 0, std::uint32_t(kv.second.value.size())});
+            if (kv.second.status == ValueState::Unprocessed)
+            {
+                candidates.emplace(
+                    KeyValue<BITS>{kv.first, kv.second.offset,
+                                   std::uint32_t(kv.second.value.size())});
+            }
+            else if (kv.second.status == ValueState::Evicted)
+            {
+                evictions.emplace(
+                    KeyValue<BITS>{kv.first, kv.second.offset,
+                                   std::uint32_t(kv.second.value.size())});
+            }
         });
-        return range;
+        return std::make_pair(candidates, evictions);
     }
 
     void Clear() { buf_.clear(); }
@@ -244,8 +270,10 @@ class Buffer
                     std::string const &value, ValueState const &status)
     {
         std::lock_guard<std::mutex> lock(mtx_);
-        if (buf_.left.find(key) == buf_.left.end())
-            buf_.insert(key_value_type(key, Value{offset, value, status}));
+        if (buf_.left.find(key) != buf_.left.end())
+            throw std::runtime_error("Bad add");
+        buf_.left.insert(
+            left_key_value_type(key, Value{offset, value, status}));
         return buf_.size();
     }
 
