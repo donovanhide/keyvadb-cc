@@ -57,7 +57,8 @@ class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits>
 
     value_type GetValue(std::uint64_t const offset, std::string const& value)
     {
-        return value_type{offset, value, status_type::NeedsCommitting};
+        return value_type{offset, std::uint32_t(value.length()), value,
+                          status_type::NeedsCommitting};
     }
 
     key_value_type EmptyKeyValue() { return key_value_type(); }

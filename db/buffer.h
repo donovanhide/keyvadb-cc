@@ -43,7 +43,6 @@ class Buffer
     {
         Unprocessed,
         Evicted,
-        Duplicate,
         NeedsCommitting,
         Committed,
     };
@@ -51,6 +50,7 @@ class Buffer
     struct Value
     {
         std::uint64_t offset;
+        std::uint32_t length;
         std::string value;
         ValueState status;
 
@@ -62,7 +62,7 @@ class Buffer
         // Disk format size including length and key
         std::uint64_t Size() const
         {
-            return sizeof(std::uint64_t) + BITS / 8 + value.size();
+            return sizeof(std::uint64_t) + BITS / 8 + length;
         }
     };
 
@@ -98,34 +98,46 @@ class Buffer
     mutable std::mutex mtx_;
 
    public:
+    value_type Get(std::string const &key) const
+    {
+        std::lock_guard<std::mutex> lock(mtx_);
+        auto v = buf_.left.find(util::FromBytes(key));
+        if (v != buf_.left.end() && v->second.status != ValueState::Evicted)
+            return v->second.value;
+        return boost::none;
+    }
+
     std::size_t Add(std::string const &key, std::string const &value)
     {
         // std::cout << "Add: " << util::ToHex(util::FromBytes(key)) <<
         // std::endl;
-        return add(util::FromBytes(key), 0, value, ValueState::Unprocessed);
+        auto k = util::FromBytes(key);
+        std::lock_guard<std::mutex> lock(mtx_);
+        if (buf_.left.find(k) == buf_.left.end())
+            buf_.left.insert(
+                left_key_value_type(k, Value{0, std::uint32_t(value.length()),
+                                             value, ValueState::Unprocessed}));
+        return buf_.size();
     }
 
-    std::size_t AddEvictee(key_type const &key, std::uint64_t const offset)
+    std::size_t AddEvictee(key_type const &key, std::uint64_t const offset,
+                           std::uint32_t const length)
     {
         // std::cout << "Evicted: " << util::ToHex(key) << ":" << offset
         // << std::endl;
-        auto size = add(key, offset, emptyBufferValue, ValueState::Evicted);
-        return size;
+        std::lock_guard<std::mutex> lock(mtx_);
+        if (buf_.left.find(key) == buf_.left.end())
+            buf_.left.insert(left_key_value_type(
+                key,
+                Value{offset, length, emptyBufferValue, ValueState::Evicted}));
+        return buf_.size();
     }
 
-    void SetDuplicate(key_type const &key)
+    void RemoveDuplicate(key_type const &key)
     {
         // std::cout << "Duplicated: " << util::ToHex(key) << std::endl;
         std::lock_guard<std::mutex> lock(mtx_);
-        auto it = buf_.left.find(key);
-        if (it == buf_.left.end())
-            throw std::runtime_error("Bad SetDuplicate");
-        auto modified = buf_.left.modify_data(
-            it,
-            boost::bimaps::_data = Value{it->second.offset, it->second.value,
-                                         ValueState::Duplicate});
-        if (!modified)
-            throw std::runtime_error("Bad SetDuplicate");
+        buf_.left.erase(key);
     }
 
     void SetOffset(key_type const &key, std::uint64_t const offset)
@@ -137,19 +149,11 @@ class Buffer
         if (it == buf_.left.end())
             throw std::runtime_error("Bad SetOffset");
         auto modified = buf_.left.modify_data(
-            it, boost::bimaps::_data = Value{offset, it->second.value,
-                                             ValueState::NeedsCommitting});
+            it, boost::bimaps::_data =
+                    Value{offset, it->second.length, it->second.value,
+                          ValueState::NeedsCommitting});
         if (!modified)
             throw std::runtime_error("Bad SetOffset");
-    }
-
-    value_type Get(std::string const &key) const
-    {
-        std::lock_guard<std::mutex> lock(mtx_);
-        auto v = buf_.left.find(util::FromBytes(key));
-        if (v != buf_.left.end() && !v->second.value.empty())
-            return v->second.value;
-        return boost::none;
     }
 
     std::error_condition Commit(value_store_ptr const &values,
@@ -162,7 +166,7 @@ class Buffer
             for (std::size_t i = 0; i < batchSize; i++)
             {
                 auto it = buf_.right.lower_bound(
-                    Value{0, emptyBufferValue, ValueState::NeedsCommitting});
+                    Value{0, 0, emptyBufferValue, ValueState::NeedsCommitting});
                 if (it == buf_.right.end() ||
                     it->first.status != ValueState::NeedsCommitting)
                     return std::error_condition();
@@ -174,8 +178,8 @@ class Buffer
                     return err;
                 auto modified = buf_.right.modify_key(
                     it, boost::bimaps::_key =
-                            Value{it->first.offset, it->first.value,
-                                  ValueState::Committed});
+                            Value{it->first.offset, it->first.length,
+                                  it->first.value, ValueState::Committed});
                 if (!modified)
                     throw std::runtime_error("Bad Commit");
             }
@@ -186,8 +190,13 @@ class Buffer
     {
         {
             std::lock_guard<std::mutex> lock(mtx_);
+            auto check = buf_.right.lower_bound(
+                Value{0, 0, emptyBufferValue, ValueState::NeedsCommitting});
+            if (check != buf_.right.end() &&
+                check->first.status == ValueState::NeedsCommitting)
+                throw std::runtime_error("Buffer not ready for purge");
             auto it = buf_.right.lower_bound(
-                Value{0, emptyBufferValue, ValueState::Evicted});
+                Value{0, 0, emptyBufferValue, ValueState::Evicted});
             buf_.right.erase(it, buf_.right.end());
         }
     }
@@ -204,18 +213,30 @@ class Buffer
                       {
             if (kv.second.status == ValueState::Unprocessed)
             {
-                candidates.emplace(
-                    KeyValue<BITS>{kv.first, kv.second.offset,
-                                   std::uint32_t(kv.second.value.size())});
+                candidates.emplace(KeyValue<BITS>{kv.first, kv.second.offset,
+                                                  kv.second.length});
             }
             else if (kv.second.status == ValueState::Evicted)
             {
-                evictions.emplace(
-                    KeyValue<BITS>{kv.first, kv.second.offset,
-                                   std::uint32_t(kv.second.value.size())});
+                evictions.emplace(KeyValue<BITS>{kv.first, kv.second.offset,
+                                                 kv.second.length});
             }
         });
         return std::make_pair(candidates, evictions);
+    }
+    // Returns true if there are values greater than first and less than
+    // last
+    bool ContainsRange(key_type const &first, key_type const &last) const
+    {
+        if (first > last)
+            throw std::invalid_argument("First must not be greater than last");
+        std::lock_guard<std::mutex> lock(mtx_);
+        return std::any_of(lower(first), upper(last),
+                           [](left_key_value_type const &kv)
+                           {
+            return kv.second.status == ValueState::Unprocessed ||
+                   kv.second.status == ValueState::Evicted;
+        });
     }
 
     void Clear() { buf_.clear(); }
@@ -230,20 +251,10 @@ class Buffer
     {
         std::lock_guard<std::mutex> lock(mtx_);
         auto first = buf_.right.lower_bound(
-            Value{0, emptyBufferValue, ValueState::NeedsCommitting});
+            Value{0, 0, emptyBufferValue, ValueState::NeedsCommitting});
         auto last = buf_.right.lower_bound(
-            Value{0, emptyBufferValue, ValueState::Committed});
+            Value{0, 0, emptyBufferValue, ValueState::Committed});
         return std::distance(first, last);
-    }
-
-    // Returns true if there are values greater than first and less than
-    // last
-    bool ContainsRange(key_type const &first, key_type const &last) const
-    {
-        if (first > last)
-            throw std::invalid_argument("First must not be greater than last");
-        std::lock_guard<std::mutex> lock(mtx_);
-        return lower(first) != upper(last);
     }
 
     friend std::ostream &operator<<(std::ostream &stream, const Buffer &buffer)
@@ -259,6 +270,7 @@ class Buffer
         for (auto it = buffer.buf_.right.begin(); it != buffer.buf_.right.end();
              ++it)
             stream << util::ToHex(it->second) << ":" << it->first.offset << ":"
+                   << it->first.length << ":"
                    << valueStates.at(it->first.status) << ":"
                    << it->first.Size() << std::endl;
         stream << "--------" << std::endl;
@@ -266,17 +278,6 @@ class Buffer
     }
 
    private:
-    std::size_t add(key_type const &key, std::uint64_t const &offset,
-                    std::string const &value, ValueState const &status)
-    {
-        std::lock_guard<std::mutex> lock(mtx_);
-        if (buf_.left.find(key) != buf_.left.end())
-            throw std::runtime_error("Bad add");
-        buf_.left.insert(
-            left_key_value_type(key, Value{offset, value, status}));
-        return buf_.size();
-    }
-
     const_iterator lower(key_type const &first) const
     {
         return buf_.left.upper_bound(first);
@@ -296,7 +297,6 @@ const std::map<typename Buffer<BITS>::ValueState, std::string>
     Buffer<BITS>::valueStates{
         {Buffer<BITS>::ValueState::Unprocessed, "Unprocessed"},
         {Buffer<BITS>::ValueState::Evicted, "Evicted"},
-        {Buffer<BITS>::ValueState::Duplicate, "Duplicate"},
         {Buffer<BITS>::ValueState::NeedsCommitting, "NeedsCommitting"},
         {Buffer<BITS>::ValueState::Committed, "Committed"},
     };

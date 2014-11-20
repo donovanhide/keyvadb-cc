@@ -73,15 +73,18 @@ class Tree
             std::error_condition err;
             std::tie(node, err) = store_->Get(rootId);
             if (err)
-                return std::make_pair(key_value_type{}, err);
+                throw std::runtime_error("no root!");
+            // return std::make_pair(key_value_type{}, err);
         }
         return get(node, key);
     }
 
     std::error_condition Update(const node_ptr& node)
     {
+        if (auto err = store_->Set(node))
+            return err;
         cache_.Add(node);
-        return store_->Set(node);
+        return std::error_condition();
     }
 
     std::pair<bool, std::error_condition> IsSane() const
@@ -138,7 +141,9 @@ class Tree
                 if (key > first && key < last)
                 {
                     if (cid == EmptyChild)
+                    {
                         return make_error_condition(db_error::key_not_found);
+                    }
                     found = true;
                     node_ptr node;
                     std::error_condition err;

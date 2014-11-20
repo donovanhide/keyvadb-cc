@@ -77,6 +77,11 @@ class Delta
         std::set<KeyValue<BITS>> evictions;
         std::tie(candidates, evictions) =
             buffer.GetCandidates(current_->First(), current_->Last());
+        if (candidates.size() + evictions.size() == 0)
+        {
+            // Nothing to do, this is the root node being checked for work
+            return offset;
+        }
         std::set<KeyValue<BITS>> existing(current_->NonZeroBegin(),
                                           current_->keys.cend());
 
@@ -89,7 +94,7 @@ class Delta
         // Remove dupes
         for (auto const& kv : dupes)
         {
-            buffer.SetDuplicate(kv.key);
+            buffer.RemoveDuplicate(kv.key);
             candidates.erase(kv);
         }
         if ((candidates.size() == 0 && evictions.size() == 0) ||
@@ -158,7 +163,7 @@ class Delta
             if (kv.IsSynthetic())
                 continue;
             evictions_++;
-            buffer.AddEvictee(kv.key, kv.offset);
+            buffer.AddEvictee(kv.key, kv.offset, kv.length);
         }
         return offset;
     }

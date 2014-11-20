@@ -74,9 +74,15 @@ class DB
 
     ~DB()
     {
-        if (auto err = Close())
+        std::cout << "Destructor" << std::endl;
+        close_ = true;
+        thread_.join();
+        if (auto err = values_->Close())
             if (log_.error)
-                log_.error << "Destroying DB: " << err.message();
+                log_.error << "Closing values: " << err.message();
+        if (auto err = keys_->Close())
+            if (log_.error)
+                log_.error << "Closing keys: " << err.message();
     }
 
     // Not threadsafe
@@ -100,26 +106,15 @@ class DB
         return values_->Clear();
     }
 
-    // Not threadsafe
-    std::error_condition Close()
-    {
-        if (close_.exchange(true))
-            return std::error_condition();
-        thread_.join();
-        if (auto err = values_->Close())
-            return err;
-        return keys_->Close();
-    }
-
     std::error_condition Get(std::string const &key, std::string *value)
     {
         if (key.length() != key_length)
             return db_error::key_wrong_length;
         if (auto v = buffer_.Get(key))
         {
+            if (v->length() == 0)
+                throw std::runtime_error("Bad Get");
             value->assign(*v);
-            if (log_.debug)
-                log_.debug << "Buffer Get: " << boost::algorithm::hex(key);
             return std::error_condition();
         }
         // Value must be on disk
@@ -128,8 +123,11 @@ class DB
         std::tie(kv, err) = tree_.Get(util::FromBytes(key));
         if (err)
             return err;
-        if (log_.debug)
-            log_.debug << "Get: " << boost::algorithm::hex(key) << ":" << kv;
+        // if (log_.debug)
+        //     log_.debug << "Get: " << boost::algorithm::hex(key) << ":" << kv;
+        if (kv.length == 0)
+            throw std::runtime_error("Bad length for: " +
+                                     boost::algorithm::hex(key));
         return values_->Get(kv.offset, kv.Size(), value);
     }
 
@@ -139,6 +137,8 @@ class DB
             return db_error::key_wrong_length;
         if (value.size() > std::numeric_limits<std::uint32_t>::max())
             return db_error::value_too_long;
+        if (value.size() == 0)
+            return db_error::zero_length_value;
         buffer_.Add(key, value);
         return std::error_condition();
     }
@@ -156,7 +156,8 @@ class DB
             log_.info << "Flushing: " << buffer_.ReadyForCommitting() << "/"
                       << buffer_.Size() << " keys into " << journal.Size()
                       << " nodes";
-        if (auto err = journal.Commit(tree_, 100))  // TODO: Make a tunable
+        std::cout << cache_;
+        if (auto err = journal.Commit(tree_, 10))  // TODO: Make a tunable
             return err;
         return std::error_condition();
     }

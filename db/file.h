@@ -53,6 +53,8 @@ class FileValueStore : public ValueStore<BITS>
                              std::string* value) const override
     {
         value->resize(length - value_offset);
+        if (value->size() == 0)
+            throw std::runtime_error("zero length read");
         std::size_t bytesRead;
         std::error_condition err;
         std::tie(bytesRead, err) = file_->ReadAt(offset + value_offset, *value);
@@ -68,8 +70,6 @@ class FileValueStore : public ValueStore<BITS>
     {
         assert(value.ReadyForWriting());
         auto length = value_offset + value.value.size();
-        // std::cout << util::ToHex(key) << ":" << value.value.size() <<
-        // std::endl;
         if (value.value.size() == 0)
             throw std::runtime_error("zero length value for key: " +
                                      util::ToHex(key));
