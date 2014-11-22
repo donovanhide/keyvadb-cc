@@ -75,8 +75,8 @@ class Delta
         auto N = current_->MaxKeys();
         std::set<KeyValue<BITS>> candidates;
         std::set<KeyValue<BITS>> evictions;
-        std::tie(candidates, evictions) =
-            buffer.GetCandidates(current_->First(), current_->Last());
+        buffer.GetCandidates(current_->First(), current_->Last(), candidates,
+                             evictions);
         if (candidates.size() + evictions.size() == 0)
         {
             // Nothing to do, this is the root node being checked for work

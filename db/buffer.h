@@ -20,20 +20,8 @@ namespace keyvadb
 template <std::uint32_t BITS>
 class ValueStore;  // Forward Declaration
 
-// A threadsafe container for storing keys, values and the offset of the key
-// and
-// values in the values file. A Value field might contain an empty offset or
-// an
-// empty string but never both. Values with empty strings are being evicted
-// from
-// a Node to one of its children, while a Value with an empty offset has not
-// been yet assigned an offset in the values file. This complicated state is
-// to
-// facilitate write-buffering.
-// The entries can be iterated in either key order, for when keys are being
-// added to the tree, and value offset order, for when the keys and values
-// are
-// being streamed to the values file.
+// A threadsafe container for storing keys and values for the period before they
+// are committed to disk.
 template <std::uint32_t BITS>
 class Buffer
 {
@@ -85,9 +73,7 @@ class Buffer
     using map_type =
         boost::bimap<boost::bimaps::set_of<key_type>,
                      boost::bimaps::multiset_of<Value, ValueComparer>>;
-    using const_iterator = typename map_type::left_const_iterator;
-    using key_value_type = typename map_type::value_type;
-    using left_key_value_type = typename map_type::left_value_type;
+    using left_value_type = typename map_type::left_value_type;
     using value_store_ptr = std::shared_ptr<ValueStore<BITS>>;
     using candidate_type = std::set<KeyValue<BITS>>;
 
@@ -103,57 +89,52 @@ class Buffer
         std::lock_guard<std::mutex> lock(mtx_);
         auto v = buf_.left.find(util::FromBytes(key));
         if (v != buf_.left.end() && v->second.status != ValueState::Evicted)
+            // An Evicted key won't have an associated value
             return v->second.value;
         return boost::none;
     }
 
     std::size_t Add(std::string const &key, std::string const &value)
     {
-        // std::cout << "Add: " << util::ToHex(util::FromBytes(key)) <<
-        // std::endl;
         auto k = util::FromBytes(key);
         std::lock_guard<std::mutex> lock(mtx_);
         if (buf_.left.find(k) == buf_.left.end())
-            buf_.left.insert(
-                left_key_value_type(k, Value{0, std::uint32_t(value.length()),
-                                             value, ValueState::Unprocessed}));
+        {
+            // Don't overwrite an existing key that might not be Unprocessed
+            auto v = left_value_type(k, Value{0, std::uint32_t(value.length()),
+                                              value, ValueState::Unprocessed});
+            buf_.left.insert(v);
+        }
         return buf_.size();
     }
 
     std::size_t AddEvictee(key_type const &key, std::uint64_t const offset,
                            std::uint32_t const length)
     {
-        // std::cout << "Evicted: " << util::ToHex(key) << ":" << offset
-        // << std::endl;
         std::lock_guard<std::mutex> lock(mtx_);
-        if (buf_.left.find(key) == buf_.left.end())
-            buf_.left.insert(left_key_value_type(
-                key,
-                Value{offset, length, emptyBufferValue, ValueState::Evicted}));
+        assert(buf_.left.find(key) == buf_.left.end());
+        auto v = left_value_type(
+            key, Value{offset, length, emptyBufferValue, ValueState::Evicted});
+        buf_.left.insert(v);
         return buf_.size();
     }
 
     void RemoveDuplicate(key_type const &key)
     {
-        // std::cout << "Duplicated: " << util::ToHex(key) << std::endl;
         std::lock_guard<std::mutex> lock(mtx_);
         buf_.left.erase(key);
     }
 
     void SetOffset(key_type const &key, std::uint64_t const offset)
     {
-        // std::cout << "SetOffset: " << util::ToHex(key) << ":" << offset
-        // << std::endl;
         std::lock_guard<std::mutex> lock(mtx_);
         auto it = buf_.left.find(key);
-        if (it == buf_.left.end())
-            throw std::runtime_error("Bad SetOffset");
+        assert(it != buf_.left.end());
         auto modified = buf_.left.modify_data(
             it, boost::bimaps::_data =
                     Value{offset, it->second.length, it->second.value,
                           ValueState::NeedsCommitting});
-        if (!modified)
-            throw std::runtime_error("Bad SetOffset");
+        assert(modified);
     }
 
     std::error_condition Commit(value_store_ptr const &values,
@@ -165,15 +146,10 @@ class Buffer
             std::lock_guard<std::mutex> lock(mtx_);
             for (std::size_t i = 0; i < batchSize; i++)
             {
-                auto it = buf_.right.lower_bound(
-                    Value{0, 0, emptyBufferValue, ValueState::NeedsCommitting});
+                auto it = first(ValueState::NeedsCommitting);
                 if (it == buf_.right.end() ||
                     it->first.status != ValueState::NeedsCommitting)
                     return std::error_condition();
-                // std::cout << "Committing: " << i << ":"
-                //           << valueStates.at(it->first.status) << ":"
-                //           << util::ToHex(it->second) << ":" << buf_.size()
-                //           << std::endl;
                 if (auto err = values->Set(it->second, it->first))
                     return err;
                 auto modified = buf_.right.modify_key(
@@ -188,58 +164,48 @@ class Buffer
 
     void Purge()
     {
-        {
-            std::lock_guard<std::mutex> lock(mtx_);
-            auto check = buf_.right.lower_bound(
-                Value{0, 0, emptyBufferValue, ValueState::NeedsCommitting});
-            if (check != buf_.right.end() &&
-                check->first.status == ValueState::NeedsCommitting)
-                throw std::runtime_error("Buffer not ready for purge");
-            auto it = buf_.right.lower_bound(
-                Value{0, 0, emptyBufferValue, ValueState::Evicted});
-            buf_.right.erase(it, buf_.right.end());
-        }
+        std::lock_guard<std::mutex> lock(mtx_);
+        auto check = first(ValueState::NeedsCommitting);
+        assert(check == buf_.right.end() ||
+               check->first.status != ValueState::NeedsCommitting);
+        buf_.right.erase(first(ValueState::Evicted), buf_.right.end());
     }
 
-    // Returns all
-    std::pair<candidate_type, candidate_type> GetCandidates(
-        key_type const &firstKey, key_type const &lastKey)
+    void GetCandidates(key_type const &firstKey, key_type const &lastKey,
+                       candidate_type &candidates, candidate_type &evictions)
     {
-        std::set<KeyValue<BITS>> candidates;
-        std::set<KeyValue<BITS>> evictions;
         std::lock_guard<std::mutex> lock(mtx_);
         std::for_each(lower(firstKey), upper(lastKey),
-                      [&candidates, &evictions](left_key_value_type const &kv)
+                      [&candidates, &evictions](left_value_type const &kv)
                       {
             if (kv.second.status == ValueState::Unprocessed)
-            {
                 candidates.emplace(KeyValue<BITS>{kv.first, kv.second.offset,
                                                   kv.second.length});
-            }
             else if (kv.second.status == ValueState::Evicted)
-            {
                 evictions.emplace(KeyValue<BITS>{kv.first, kv.second.offset,
                                                  kv.second.length});
-            }
         });
-        return std::make_pair(candidates, evictions);
     }
+
     // Returns true if there are values greater than first and less than
     // last
     bool ContainsRange(key_type const &first, key_type const &last) const
     {
-        if (first > last)
-            throw std::invalid_argument("First must not be greater than last");
+        assert(first <= last);
         std::lock_guard<std::mutex> lock(mtx_);
         return std::any_of(lower(first), upper(last),
-                           [](left_key_value_type const &kv)
+                           [](left_value_type const &kv)
                            {
             return kv.second.status == ValueState::Unprocessed ||
                    kv.second.status == ValueState::Evicted;
         });
     }
 
-    void Clear() { buf_.clear(); }
+    void Clear()
+    {
+        std::lock_guard<std::mutex> lock(mtx_);
+        buf_.clear();
+    }
 
     std::size_t Size() const
     {
@@ -250,11 +216,8 @@ class Buffer
     std::size_t ReadyForCommitting() const
     {
         std::lock_guard<std::mutex> lock(mtx_);
-        auto first = buf_.right.lower_bound(
-            Value{0, 0, emptyBufferValue, ValueState::NeedsCommitting});
-        auto last = buf_.right.lower_bound(
-            Value{0, 0, emptyBufferValue, ValueState::Committed});
-        return std::distance(first, last);
+        return std::distance(first(ValueState::NeedsCommitting),
+                             first(ValueState::Committed));
     }
 
     friend std::ostream &operator<<(std::ostream &stream, const Buffer &buffer)
@@ -267,25 +230,33 @@ class Buffer
         //            kv.right.Size()
         //            << std::endl;
         // stream << "--------" << std::endl;
-        for (auto it = buffer.buf_.right.begin(); it != buffer.buf_.right.end();
-             ++it)
-            stream << util::ToHex(it->second) << ":" << it->first.offset << ":"
-                   << it->first.length << ":"
-                   << valueStates.at(it->first.status) << ":"
-                   << it->first.Size() << std::endl;
+        for (auto const &v : buffer.buf_.right)
+            stream << util::ToHex(v.second) << ":" << v.first.offset << ":"
+                   << v.first.length << ":" << valueStates.at(v.first.status)
+                   << ":" << v.first.Size() << std::endl;
         stream << "--------" << std::endl;
         return stream;
     }
 
    private:
-    const_iterator lower(key_type const &first) const
+    typename map_type::left_const_iterator lower(key_type const &first) const
     {
         return buf_.left.upper_bound(first);
     }
 
-    const_iterator upper(key_type const &last) const
+    typename map_type::left_const_iterator upper(key_type const &last) const
     {
         return buf_.left.lower_bound(last);
+    }
+
+    typename map_type::right_const_iterator first(ValueState state) const
+    {
+        return buf_.right.lower_bound(Value{0, 0, emptyBufferValue, state});
+    }
+
+    typename map_type::right_iterator first(ValueState state)
+    {
+        return buf_.right.lower_bound(Value{0, 0, emptyBufferValue, state});
     }
 };
 

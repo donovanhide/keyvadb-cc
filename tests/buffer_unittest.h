@@ -21,7 +21,6 @@ TEST(BufferTest, General)
 
     // ContainsRange
     ASSERT_TRUE(buffer.ContainsRange(first, last));
-    ASSERT_THROW(buffer.ContainsRange(last, first), std::invalid_argument);
     ASSERT_FALSE(buffer.ContainsRange(first, first));
     ASSERT_FALSE(buffer.ContainsRange(last, last));
     ASSERT_TRUE(buffer.ContainsRange(ones, threes));
