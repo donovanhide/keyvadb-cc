@@ -36,5 +36,5 @@ TYPED_TEST(StoreTest, TreeOperations)
             // std::cout << *tree;
         }
     }
-    std::cout << this->cache_;
+    // std::cout << this->cache_;
 }

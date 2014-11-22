@@ -42,6 +42,10 @@ class DB
     cache_type cache_;
     tree_type tree_;
     buffer_type buffer_;
+    std::atomic_uint_fast64_t buffer_hits_;
+    std::atomic_uint_fast64_t key_misses_;
+    std::atomic_uint_fast64_t value_hits_;
+    std::atomic_uint_fast64_t value_misses_;
     std::atomic<bool> close_;
     std::thread thread_;
 
@@ -52,6 +56,10 @@ class DB
           values_(Storage::CreateValueStore()),
           cache_(),
           tree_(keys_, cache_),
+          buffer_hits_(0),
+          key_misses_(0),
+          value_hits_(0),
+          value_misses_(0),
           close_(false),
           thread_(&DB::flushThread, this)
     {
@@ -64,6 +72,10 @@ class DB
           values_(Storage::CreateValueStore(keyFileName)),
           cache_(),
           tree_(keys_, cache_),
+          buffer_hits_(0),
+          key_misses_(0),
+          value_hits_(0),
+          value_misses_(0),
           close_(false),
           thread_(&DB::flushThread, this)
     {
@@ -115,6 +127,7 @@ class DB
             if (v->length() == 0)
                 throw std::runtime_error("Bad Get");
             value->assign(*v);
+            buffer_hits_++;
             return std::error_condition();
         }
         // Value must be on disk
@@ -122,13 +135,21 @@ class DB
         std::error_condition err;
         std::tie(kv, err) = tree_.Get(util::FromBytes(key));
         if (err)
+        {
+            key_misses_++;
             return err;
+        }
         // if (log_.debug)
         //     log_.debug << "Get: " << boost::algorithm::hex(key) << ":" << kv;
         if (kv.length == 0)
             throw std::runtime_error("Bad length for: " +
                                      boost::algorithm::hex(key));
-        return values_->Get(kv.offset, kv.Size(), value);
+        err = values_->Get(kv.offset, kv.Size(), value);
+        if (err)
+            value_misses_++;
+        else
+            value_hits_++;
+        return err;
     }
 
     std::error_condition Put(std::string const &key, std::string const &value)
@@ -155,7 +176,10 @@ class DB
         if (log_.info)
             log_.info << "Flushing: " << buffer_.ReadyForCommitting() << "/"
                       << buffer_.Size() << " keys into " << journal.Size()
-                      << " nodes";
+                      << " nodes Buffer hits: " << buffer_hits_
+                      << " Key misses: " << key_misses_
+                      << " Value Hits: " << value_hits_
+                      << " Value Misses: " << value_misses_;
         std::cout << cache_;
         if (auto err = journal.Commit(tree_, 10))  // TODO: Make a tunable
             return err;

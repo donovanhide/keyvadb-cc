@@ -103,10 +103,6 @@ class Journal
                 {
                     if (!buffer_.ContainsRange(first, last))
                         return std::error_condition();
-                    // std::cout << util::ToHex(first) << ":" <<
-                    // util::ToHex(last)
-                    //           << ":" << node->Id() << ":" << level <<
-                    //           std::endl;
                     if (cid == EmptyChild)
                     {
                         auto child = keys_->New(level, first, last);

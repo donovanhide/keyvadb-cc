@@ -120,15 +120,19 @@ TYPED_TEST(DBTest, Bulk)
         ASSERT_FALSE(db->Get(key, &value));
         this->CompareKeys(key, value.substr(0, 32));
     }
-
+    // Close and reopen to make sure everything is flushed
+    // auto dbptr = db.release();
+    // delete dbptr;
+    // db = this->GetDB();
+    // ASSERT_FALSE(db->Open());
     // std::uint32_t i = 0;
-    // auto err =
-    //     db->Each([&](std::string const& key, std::string const& value)
-    //                   {
-    //                       this->CompareKeys(key, value.substr(0, 32));
-    //                       ASSERT_TRUE(unique.find(key) != unique.end());
-    //                       i++;
-    //                   });
+    // auto err = db->Each([&](std::string const& key, std::string const& value)
+    //                     {
+    //                         this->CompareKeys(key, value.substr(0, 32));
+    //                         ASSERT_TRUE(unique.find(key) != unique.end());
+    //                         i++;
+    //                     });
+    // std::cout << err.message() << std::endl;
     // ASSERT_FALSE(err);
     // ASSERT_EQ(numKeys, i);
 }
