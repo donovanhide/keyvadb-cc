@@ -13,6 +13,13 @@
 
 using namespace keyvadb;
 
+::testing::AssertionResult NoError(std::error_condition err)
+{
+    if (err)
+        return ::testing::AssertionFailure() << err.message();
+    return ::testing::AssertionSuccess();
+}
+
 template <typename T>
 class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits>
 {

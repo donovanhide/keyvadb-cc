@@ -60,6 +60,7 @@ class NodeCache
         inserts_ = 0;
         updates_ = 0;
         nodes_.clear();
+        index_.clear();
     }
 
     void Add(node_ptr const& node)
@@ -72,29 +73,31 @@ class NodeCache
         if (it != nodes_.left.end())
         {
             updates_++;
+            assert(it->second->Id() == node->Id());
             it->second = node;
             nodes_.right.relocate(nodes_.right.end(), nodes_.project_right(it));
         }
         else
         {
             inserts_++;
-            nodes_.insert(store_value(keyPair, node));
-            index_[node->Id()] = keyPair;
-            if (nodes_.size() > maxSize_)
+            if (nodes_.size() == maxSize_)
             {
                 auto evictee = nodes_.right.begin();
                 index_.erase(evictee->first->Id());
                 nodes_.right.erase(evictee);
             }
+            assert(nodes_.size() <= maxSize_ && index_.size() <= maxSize_);
+            nodes_.insert(store_value(keyPair, node));
+            index_[node->Id()] = keyPair;
         }
     }
 
-    node_ptr Get(std::uint64_t const id)
+    node_ptr GetById(std::uint64_t const id)
     {
         std::lock_guard<std::mutex> lock(lock_);
         auto found = index_.find(id);
         if (found != index_.end())
-            return nodes_.left[found->second];
+            return nodes_.left.at(found->second);
         return node_ptr();
     }
 
@@ -102,7 +105,6 @@ class NodeCache
     // Key 0000...0000 will always return a null node_ptr.
     node_ptr Get(key_type const& key)
     {
-        using util = detail::KeyUtil<BITS>;
         std::lock_guard<std::mutex> lock(lock_);
         if (maxSize_ == 0 || nodes_.size() == 0)
             return node_ptr();
@@ -123,7 +125,6 @@ class NodeCache
             }
         }
         misses_++;
-        // std::cout << "Miss:" << util::ToHex(key) << std::endl;
         return node_ptr();
     }
 
@@ -134,11 +135,10 @@ class NodeCache
                << " Hits: " << cache.hits_ << " Misses: " << cache.misses_
                << " Inserts:" << cache.inserts_
                << " Updates: " << cache.updates_ << std::endl;
-        // for (auto it = std::cbegin(cache.nodes_); it !=
-        // std::cend(cache.nodes_);
-        //      ++it)
-        //   stream << it->left.first << ":" << util::ToHex(it->left.second)
-        //          << std::endl;
+        // for (auto const& n : cache.nodes_)
+        //     stream << n.left.first << ":" << util::ToHex(n.left.second) <<
+        //     ":"
+        //            << n.right->Id() << std::endl;
         return stream;
     }
 };

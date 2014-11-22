@@ -101,7 +101,7 @@ TYPED_TEST(DBTest, Bulk)
 
         for (std::size_t i = first; i < last; i++)
         {
-            ASSERT_FALSE(db->Get(keys[i], &value));
+            ASSERT_TRUE(NoError(db->Get(keys[i], &value)));
             this->CompareKeys(keys[i], value.substr(0, 32));
         }
     };
@@ -117,7 +117,7 @@ TYPED_TEST(DBTest, Bulk)
     for (const auto& key : unique)
     {
         std::string value;
-        ASSERT_FALSE(db->Get(key, &value));
+        ASSERT_TRUE(NoError(db->Get(key, &value)));
         this->CompareKeys(key, value.substr(0, 32));
     }
     // Close and reopen to make sure everything is flushed

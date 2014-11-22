@@ -52,7 +52,6 @@ TYPED_TEST(StoreTest, Cache)
     auto last = this->FromHex('F');
     auto key1 = this->FromHex('1');
     auto key2 = this->FromHex('2');
-    // auto key3 = this->FromHex('3');
     auto key4 = this->FromHex('4');
     auto key5 = this->FromHex('5');
     auto root = this->keys_->New(0, first, last);
@@ -64,10 +63,18 @@ TYPED_TEST(StoreTest, Cache)
     ASSERT_FALSE(this->cache_.Get(first));
     // The key 0000...0001 is the first key that can possibly be found
     ASSERT_EQ(this->cache_.Get(first + 1), root);
+    ASSERT_EQ(this->cache_.GetById(root->Id()), root);
     this->cache_.Add(firstChild);
     ASSERT_EQ(this->cache_.Get(key1 + 1), firstChild);
+    ASSERT_EQ(this->cache_.GetById(firstChild->Id()), firstChild);
     this->cache_.Add(secondChild);
     ASSERT_EQ(this->cache_.Get(key2 + 1), secondChild);
+    ASSERT_EQ(this->cache_.GetById(secondChild->Id()), secondChild);
     // root now evicted
     ASSERT_FALSE(this->cache_.Get(first + 1));
+    ASSERT_FALSE(this->cache_.GetById(0));
+
+    this->cache_.Add(firstChild);
+    this->cache_.Add(firstChild);
+    std::cout << this->cache_;
 }

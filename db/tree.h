@@ -66,7 +66,7 @@ class Tree
 
     std::pair<node_ptr, std::error_condition> GetNode(std::uint64_t id) const
     {
-        auto node = cache_.Get(id);
+        auto node = cache_.GetById(id);
         if (node)
             return std::make_pair(node, std::error_condition());
         return store_->Get(id);

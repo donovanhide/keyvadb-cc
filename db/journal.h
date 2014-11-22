@@ -49,7 +49,7 @@ class Journal
         std::tie(root, err) = tree.Root();
         if (err)
             return err;
-        return process(tree, root, 0);
+        return process(tree, root);
     }
 
     std::error_condition Commit(tree_type& tree, std::size_t const batchSize)
@@ -89,8 +89,7 @@ class Journal
     }
 
    private:
-    std::error_condition process(tree_type& tree, node_ptr const& node,
-                                 std::uint32_t const level)
+    std::error_condition process(tree_type& tree, node_ptr const& node)
     {
         delta_type delta(node);
         offset_ = delta.AddKeys(buffer_, offset_);
@@ -105,9 +104,9 @@ class Journal
                         return std::error_condition();
                     if (cid == EmptyChild)
                     {
-                        auto child = keys_->New(level, first, last);
+                        auto child = keys_->New(node->Level() + 1, first, last);
                         delta.SetChild(i, child->Id());
-                        return process(tree, child, level + 1);
+                        return process(tree, child);
                     }
                     else
                     {
@@ -116,7 +115,7 @@ class Journal
                         std::tie(child, err) = tree.GetNode(cid);
                         if (err)
                             return err;
-                        return process(tree, child, level + 1);
+                        return process(tree, child);
                     }
                 });
             if (err)
@@ -124,7 +123,7 @@ class Journal
         }
         delta.CheckSanity();
         if (delta.Dirty())
-            deltas_.emplace(level, delta);
+            deltas_.emplace(node->Level(), delta);
         return std::error_condition();
     }
 };
