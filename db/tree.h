@@ -61,16 +61,16 @@ class Tree
 
     std::pair<node_ptr, std::error_condition> Root() const
     {
-        return store_->Get(rootId);
+        return GetNode(rootId);
     }
 
-    // std::pair<node_ptr, std::error_condition> GetNode(std::uint64_t id)
-    // {
-    //     auto node = cache_.Get(key);
-    //     if (node)
-    //         return std::make_pair(node, std::error_condition());
-    //     return store_->Get(rootId);
-    // }
+    std::pair<node_ptr, std::error_condition> GetNode(std::uint64_t id) const
+    {
+        auto node = cache_.Get(id);
+        if (node)
+            return std::make_pair(node, std::error_condition());
+        return store_->Get(id);
+    }
 
     std::pair<key_value_type, std::error_condition> Get(
         key_type const& key) const

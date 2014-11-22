@@ -3,6 +3,7 @@
 #include <boost/bimap.hpp>
 #include <boost/bimap/list_of.hpp>
 #include <boost/bimap/set_of.hpp>
+#include <unordered_map>
 #include <utility>
 #include <algorithm>
 #include <mutex>
@@ -28,10 +29,11 @@ class NodeCache
             return lhs.first > rhs.first;
         }
     };
-    using index_type =
+    using store_type =
         boost::bimaps::bimap<boost::bimaps::set_of<key_level_pair, compare_kl>,
                              boost::bimaps::list_of<node_ptr>>;
-    using index_value = typename index_type::value_type;
+    using store_value = typename store_type::value_type;
+    using index_type = std::unordered_map<std::uint64_t, key_level_pair>;
 
    private:
     std::uint64_t maxSize_ = 0;
@@ -39,7 +41,8 @@ class NodeCache
     std::uint64_t misses_ = 0;
     std::uint64_t inserts_ = 0;
     std::uint64_t updates_ = 0;
-    index_type nodes_;
+    store_type nodes_;
+    index_type index_;
     std::mutex lock_;
 
    public:
@@ -64,8 +67,8 @@ class NodeCache
         if (maxSize_ == 0)
             return;
         std::lock_guard<std::mutex> lock(lock_);
-        auto it =
-            nodes_.left.find(key_level_pair{node->Level(), node->First()});
+        auto keyPair = key_level_pair{node->Level(), node->First()};
+        auto it = nodes_.left.find(keyPair);
         if (it != nodes_.left.end())
         {
             updates_++;
@@ -75,10 +78,24 @@ class NodeCache
         else
         {
             inserts_++;
-            nodes_.insert(index_value({node->Level(), node->First()}, node));
+            nodes_.insert(store_value(keyPair, node));
+            index_[node->Id()] = keyPair;
             if (nodes_.size() > maxSize_)
-                nodes_.right.erase(nodes_.right.begin());
+            {
+                auto evictee = nodes_.right.begin();
+                index_.erase(evictee->first->Id());
+                nodes_.right.erase(evictee);
+            }
         }
+    }
+
+    node_ptr Get(std::uint64_t const id)
+    {
+        std::lock_guard<std::mutex> lock(lock_);
+        auto found = index_.find(id);
+        if (found != index_.end())
+            return nodes_.left[found->second];
+        return node_ptr();
     }
 
     // Get node lowest in the tree by checking deepest nodes in the cache first.
