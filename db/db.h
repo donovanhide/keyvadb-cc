@@ -145,7 +145,7 @@ class DB
         if (buffer_.Add(key, value) > 10000)
             // naive rate limiter to stop the buffer growing too fast
             // Consider: http://en.wikipedia.org/wiki/Token_bucket
-            std::this_thread::sleep_for(std::chrono::microseconds(1));
+            std::this_thread::sleep_for(std::chrono::microseconds(50));
         return std::error_condition();
     }
 
