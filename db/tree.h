@@ -23,11 +23,9 @@ class Tree
     using key_type = typename util::key_type;
     using key_value_type = KeyValue<BITS>;
     using key_store_ptr = std::shared_ptr<KeyStore<BITS>>;
-    using value_store_ptr = std::shared_ptr<ValueStore<BITS>>;
     using node_ptr = std::shared_ptr<Node<BITS>>;
     using node_func =
         std::function<std::error_condition(node_ptr, std::uint32_t)>;
-    using delta_type = Delta<BITS>;
     using cache_type = NodeCache<BITS>;
 
    private:

@@ -78,35 +78,6 @@ class FileValueStore : public ValueStore<BITS>
         return std::error_condition();
     }
 
-    // std::error_condition Set(key_type const& key,
-    //                          value_type const& value) override
-    // {
-    //     assert(value.ReadyForWriting());
-    //     auto length = value_offset + value.value.size();
-    //     if (value.value.size() == 0)
-    //         throw std::runtime_error("zero length value for key: " +
-    //                                  util::ToHex(key));
-    //     if (value.offset < size_)
-    //         throw std::runtime_error("attempted to write before end of file:
-    //         " +
-    //                                  util::ToHex(key));
-    //     std::string str(length, '\0');
-    //     size_t pos = 0;
-    //     pos += string_replace<std::uint32_t>(length, pos, str);
-    //     str.replace(pos, Bytes, util::ToBytes(key));
-    //     pos += Bytes;
-    //     str.replace(pos, value.value.size(), value.value);
-    //     std::size_t bytesWritten;
-    //     std::error_condition err;
-    //     std::tie(bytesWritten, err) = file_->WriteAt(str, value.offset);
-    //     if (err)
-    //         return err;
-    //     if (bytesWritten != length)
-    //         return make_error_condition(db_error::short_write);
-    //     size_ += bytesWritten;
-    //     return std::error_condition();
-    // }
-
     std::error_condition Each(key_value_func f) const override
     {
         std::string str(1024 * 64, '\0');

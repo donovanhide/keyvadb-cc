@@ -70,7 +70,6 @@ class DB
 
     ~DB()
     {
-        std::cout << "Destructor" << std::endl;
         close_ = true;
         thread_.join();
         if (auto err = values_->Close())
@@ -142,10 +141,11 @@ class DB
             return db_error::value_too_long;
         if (value.size() == 0)
             return db_error::zero_length_value;
-        if (buffer_.Add(key, value) > 10000)
-            // naive rate limiter to stop the buffer growing too fast
-            // Consider: http://en.wikipedia.org/wiki/Token_bucket
-            std::this_thread::sleep_for(std::chrono::microseconds(50));
+        buffer_.Add(key, value);
+        // if ( buffer_.Add(key, value) >10000)
+        // naive rate limiter to stop the buffer growing too fast
+        // Consider: http://en.wikipedia.org/wiki/Token_bucket
+        // std::this_thread::sleep_for(std::chrono::microseconds(10));
         return std::error_condition();
     }
 
