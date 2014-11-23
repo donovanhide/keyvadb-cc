@@ -19,6 +19,8 @@ class NullLog
 
     struct Level
     {
+        Level(){};
+
         template <class T>
         ScopedOutput operator<<(T const&) const
         {

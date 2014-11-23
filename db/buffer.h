@@ -7,6 +7,7 @@
 #include <boost/bimap/set_of.hpp>
 #include <boost/bimap/multiset_of.hpp>
 #include <boost/bimap/support/lambda.hpp>
+#include <limits>
 #include <string>
 #include <map>
 #include <ostream>
@@ -26,7 +27,6 @@ template <std::uint32_t BITS>
 class Buffer
 {
    public:
-    using offset_type = boost::optional<std::uint64_t>;
     enum class ValueState : std::uint8_t
     {
         Unprocessed,
@@ -37,6 +37,11 @@ class Buffer
 
     struct Value
     {
+        enum
+        {
+            Bytes = BITS / 8
+        };
+
         std::uint64_t offset;
         std::uint32_t length;
         std::string value;
@@ -45,12 +50,6 @@ class Buffer
         bool ReadyForWriting() const
         {
             return status == ValueState::NeedsCommitting;
-        }
-
-        // Disk format size including length and key
-        std::uint64_t Size() const
-        {
-            return sizeof(std::uint64_t) + BITS / 8 + length;
         }
     };
 
@@ -79,6 +78,7 @@ class Buffer
 
     static const std::string emptyBufferValue;
     static const std::map<ValueState, std::string> valueStates;
+    static const std::uint32_t maxValueLength;
 
     map_type buf_;
     mutable std::mutex mtx_;
@@ -98,11 +98,15 @@ class Buffer
     {
         auto k = util::FromBytes(key);
         std::lock_guard<std::mutex> lock(mtx_);
+
+        // Don't overwrite an existing key that might not be Unprocessed
         if (buf_.left.find(k) == buf_.left.end())
         {
-            // Don't overwrite an existing key that might not be Unprocessed
-            auto v = left_value_type(k, Value{0, std::uint32_t(value.length()),
-                                              value, ValueState::Unprocessed});
+            assert(value.length() <= maxValueLength);
+            std::uint32_t length =
+                value.size() + sizeof(std::uint32_t) + (BITS / 8);
+            auto v = left_value_type(
+                k, Value{0, length, value, ValueState::Unprocessed});
             buf_.left.insert(v);
         }
         return buf_.size();
@@ -137,29 +141,36 @@ class Buffer
         assert(modified);
     }
 
-    std::error_condition Commit(value_store_ptr const &values,
-                                std::size_t const batchSize)
+    bool Write(std::size_t const batchSize, std::vector<std::uint8_t> &wb)
     {
-        while (true)
+        std::lock_guard<std::mutex> lock(mtx_);
+        auto it = first(ValueState::NeedsCommitting);
+        if (it == buf_.right.end() ||
+            it->first.status != ValueState::NeedsCommitting)
+            return false;
+        std::size_t pos = 0;
+        // Add at least one key and value to the buffer.
+        do
         {
-            // std::cout << *this;
-            std::lock_guard<std::mutex> lock(mtx_);
-            for (std::size_t i = 0; i < batchSize; i++)
-            {
-                auto it = first(ValueState::NeedsCommitting);
-                if (it == buf_.right.end() ||
-                    it->first.status != ValueState::NeedsCommitting)
-                    return std::error_condition();
-                if (auto err = values->Set(it->second, it->first))
-                    return err;
-                auto modified = buf_.right.modify_key(
-                    it, boost::bimaps::_key =
-                            Value{it->first.offset, it->first.length,
-                                  it->first.value, ValueState::Committed});
-                if (!modified)
-                    throw std::runtime_error("Bad Commit");
-            }
-        }
+            wb.resize(pos + it->first.length);
+            std::memcpy(&wb[pos], &it->first.length, sizeof(it->first.length));
+            pos += sizeof(it->first.length);
+            auto b = util::ToBytes(it->second);
+            std::memcpy(&wb[pos], b.data(), b.size());
+            pos += b.size();
+            std::memcpy(&wb[pos], it->first.value.data(),
+                        it->first.value.size());
+            pos += it->first.value.size();
+            auto modified = buf_.right.modify_key(
+                it, boost::bimaps::_key =
+                        Value{it->first.offset, it->first.length,
+                              it->first.value, ValueState::Committed});
+            assert(modified);
+            it = first(ValueState::NeedsCommitting);
+        } while (it != buf_.right.end() &&
+                 it->first.status == ValueState::NeedsCommitting &&
+                 pos + it->first.length <= batchSize);
+        return true;
     }
 
     void Purge()
@@ -262,6 +273,11 @@ class Buffer
 
 template <std::uint32_t BITS>
 const std::string Buffer<BITS>::emptyBufferValue;
+
+template <std::uint32_t BITS>
+const std::uint32_t Buffer<BITS>::maxValueLength =
+    std::numeric_limits<std::uint32_t>::max() - sizeof(std::uint32_t) -
+    (BITS / 8);
 
 template <std::uint32_t BITS>
 const std::map<typename Buffer<BITS>::ValueState, std::string>

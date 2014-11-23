@@ -34,9 +34,10 @@ class ValueStore
     virtual std::error_condition Clear() = 0;  // Not threadsafe
 
     virtual std::error_condition Get(std::uint64_t const offset,
-                                     std::uint64_t const length,
+                                     std::uint32_t const length,
                                      std::string* value) const = 0;
-    virtual std::error_condition Set(key_type const&, value_type const&) = 0;
+    // virtual std::error_condition Set(key_type const&, value_type const&) = 0;
+    virtual std::error_condition Append(std::vector<std::uint8_t> const&) = 0;
     virtual std::error_condition Each(key_value_func) const = 0;
     virtual std::uint64_t Size() const = 0;
 };

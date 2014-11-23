@@ -139,12 +139,10 @@ class DB
             key_misses_++;
             return err;
         }
-        // if (log_.debug)
-        //     log_.debug << "Get: " << boost::algorithm::hex(key) << ":" << kv;
         if (kv.length == 0)
             throw std::runtime_error("Bad length for: " +
                                      boost::algorithm::hex(key));
-        err = values_->Get(kv.offset, kv.Size(), value);
+        err = values_->Get(kv.offset, kv.length, value);
         if (err)
             value_misses_++;
         else
@@ -181,7 +179,8 @@ class DB
                       << " Value Hits: " << value_hits_
                       << " Value Misses: " << value_misses_;
         std::cout << cache_;
-        if (auto err = journal.Commit(tree_, 10))  // TODO: Make a tunable
+        if (auto err =
+                journal.Commit(tree_, 1024 * 1024))  // TODO: Make a tunable
             return err;
         return std::error_condition();
     }

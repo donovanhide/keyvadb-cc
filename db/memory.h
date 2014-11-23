@@ -35,7 +35,7 @@ class MemoryValueStore : public ValueStore<BITS>
         size_ = 0;
         return std::error_condition();
     }
-    std::error_condition Get(std::uint64_t const offset, std::uint64_t const,
+    std::error_condition Get(std::uint64_t const offset, std::uint32_t const,
                              std::string* value) const override
     {
         std::lock_guard<std::mutex> lock(lock_);
@@ -50,15 +50,20 @@ class MemoryValueStore : public ValueStore<BITS>
         return std::error_condition();
     }
 
-    std::error_condition Set(key_type const& key,
-                             value_type const& value) override
+    std::error_condition Append(std::vector<std::uint8_t> const& buf) override
     {
-        assert(value.ReadyForWriting());
-        std::lock_guard<std::mutex> lock(lock_);
-        map_[value.offset] = std::make_pair(util::ToBytes(key), value.value);
-        size_ += value.Size();
-        return std::error_condition();
-    };
+        throw std::runtime_error("not implemented");
+    }
+
+    // std::error_condition Set(key_type const& key,
+    //                          value_type const& value) override
+    // {
+    //     assert(value.ReadyForWriting());
+    //     std::lock_guard<std::mutex> lock(lock_);
+    //     map_[value.offset] = std::make_pair(util::ToBytes(key), value.value);
+    //     size_ += value.length;
+    //     return std::error_condition();
+    // };
 
     std::error_condition Each(key_value_func f) const override
     {

@@ -115,7 +115,7 @@ class Delta
                 insertions_++;
                 buffer.SetOffset(it->key, offset);
                 it->offset = offset;
-                offset += it->Size();
+                offset += it->length;
             }
             std::sort(current_->keys.begin(), current_->keys.end());
             return offset;
@@ -154,7 +154,7 @@ class Delta
                 insertions_++;
                 buffer.SetOffset(kv.key, offset);
                 kv.offset = offset;
-                offset += kv.Size();
+                offset += kv.length;
             }
             existing.erase(kv);
         }

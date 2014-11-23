@@ -16,10 +16,13 @@ class RandomAccessFile
    public:
     virtual ~RandomAccessFile() = default;
     virtual std::error_condition Open() = 0;
+    virtual std::error_condition OpenAppend() = 0;
     virtual std::error_condition OpenSync() = 0;
     virtual std::error_condition Truncate() const = 0;
     virtual std::pair<std::size_t, std::error_condition> ReadAt(
         std::uint64_t const pos, std::string& str) const = 0;
+    virtual std::pair<std::size_t, std::error_condition> Write(
+        std::vector<std::uint8_t> const&) = 0;
     virtual std::pair<std::size_t, std::error_condition> WriteAt(
         std::string const& str, std::uint64_t const pos) = 0;
     virtual std::error_condition Size(
@@ -44,6 +47,11 @@ class PosixRandomAccessFile : public RandomAccessFile
 
     std::error_condition Open() override { return open(O_RDWR | O_CREAT); }
 
+    std::error_condition OpenAppend() override
+    {
+        return open(O_RDWR | O_APPEND | O_CREAT);
+    }
+
     std::error_condition OpenSync() override
     {
         return open(O_RDWR | O_CREAT | O_SYNC);
@@ -62,6 +70,15 @@ class PosixRandomAccessFile : public RandomAccessFile
             return std::make_pair(0, check_error(ret));
         return std::make_pair(ret, std::error_condition());
     };
+
+    std::pair<std::size_t, std::error_condition> Write(
+        std::vector<std::uint8_t> const& buf) override
+    {
+        ssize_t ret = ::write(fd_, buf.data(), buf.size());
+        if (ret < 0)
+            return std::make_pair(0, check_error(ret));
+        return std::make_pair(ret, std::error_condition());
+    }
 
     std::pair<std::size_t, std::error_condition> WriteAt(
         std::string const& str, std::uint64_t const pos) override

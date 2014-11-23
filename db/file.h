@@ -38,7 +38,7 @@ class FileValueStore : public ValueStore<BITS>
 
     std::error_condition Open() override
     {
-        if (auto err = file_->Open())
+        if (auto err = file_->OpenAppend())
             return err;
         return file_->Size(size_);
     }
@@ -49,7 +49,7 @@ class FileValueStore : public ValueStore<BITS>
     }
     std::error_condition Close() override { return file_->Close(); }
     std::error_condition Get(std::uint64_t const offset,
-                             std::uint64_t const length,
+                             std::uint32_t const length,
                              std::string* value) const override
     {
         value->resize(length - value_offset);
@@ -65,33 +65,47 @@ class FileValueStore : public ValueStore<BITS>
         return std::error_condition();
     }
 
-    std::error_condition Set(key_type const& key,
-                             value_type const& value) override
+    std::error_condition Append(std::vector<std::uint8_t> const& buf) override
     {
-        assert(value.ReadyForWriting());
-        auto length = value_offset + value.value.size();
-        if (value.value.size() == 0)
-            throw std::runtime_error("zero length value for key: " +
-                                     util::ToHex(key));
-        if (value.offset < size_)
-            throw std::runtime_error("attempted to write before end of file: " +
-                                     util::ToHex(key));
-        std::string str(length, '\0');
-        size_t pos = 0;
-        pos += string_replace<std::uint64_t>(length, pos, str);
-        str.replace(pos, Bytes, util::ToBytes(key));
-        pos += Bytes;
-        str.replace(pos, value.value.size(), value.value);
         std::size_t bytesWritten;
         std::error_condition err;
-        std::tie(bytesWritten, err) = file_->WriteAt(str, value.offset);
+        std::tie(bytesWritten, err) = file_->Write(buf);
         if (err)
             return err;
-        if (bytesWritten != length)
+        if (bytesWritten != buf.size())
             return make_error_condition(db_error::short_write);
         size_ += bytesWritten;
         return std::error_condition();
     }
+
+    // std::error_condition Set(key_type const& key,
+    //                          value_type const& value) override
+    // {
+    //     assert(value.ReadyForWriting());
+    //     auto length = value_offset + value.value.size();
+    //     if (value.value.size() == 0)
+    //         throw std::runtime_error("zero length value for key: " +
+    //                                  util::ToHex(key));
+    //     if (value.offset < size_)
+    //         throw std::runtime_error("attempted to write before end of file:
+    //         " +
+    //                                  util::ToHex(key));
+    //     std::string str(length, '\0');
+    //     size_t pos = 0;
+    //     pos += string_replace<std::uint32_t>(length, pos, str);
+    //     str.replace(pos, Bytes, util::ToBytes(key));
+    //     pos += Bytes;
+    //     str.replace(pos, value.value.size(), value.value);
+    //     std::size_t bytesWritten;
+    //     std::error_condition err;
+    //     std::tie(bytesWritten, err) = file_->WriteAt(str, value.offset);
+    //     if (err)
+    //         return err;
+    //     if (bytesWritten != length)
+    //         return make_error_condition(db_error::short_write);
+    //     size_ += bytesWritten;
+    //     return std::error_condition();
+    // }
 
     std::error_condition Each(key_value_func f) const override
     {
@@ -105,10 +119,10 @@ class FileValueStore : public ValueStore<BITS>
             std::tie(bytesRead, err) = file_->ReadAt(filePosition, str);
             if (err)
                 return err;
-            std::uint64_t length = 0;
+            std::uint32_t length = 0;
             for (std::size_t pos = 0; pos < bytesRead;)
             {
-                string_read<std::uint64_t>(str, pos, length);
+                string_read<std::uint32_t>(str, pos, length);
                 // tail case
                 if (pos + length > bytesRead)
                 {
@@ -131,7 +145,7 @@ class FileValueStore : public ValueStore<BITS>
 };
 template <std::uint32_t BITS>
 const std::size_t FileValueStore<BITS>::value_offset = util::MaxSize() +
-                                                       sizeof(std::uint64_t);
+                                                       sizeof(std::uint32_t);
 
 template <std::uint32_t BITS>
 class FileKeyStore : public KeyStore<BITS>

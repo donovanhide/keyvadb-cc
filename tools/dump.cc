@@ -12,7 +12,7 @@ using boost::algorithm::hex;
 int main(int argc, char* argv[])
 {
     std::ifstream in(argv[1], std::ios::in | std::ios::binary);
-    std::uint64_t length;
+    std::uint32_t length;
     std::vector<char> key(32);
     std::vector<char> value;
 

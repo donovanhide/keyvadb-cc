@@ -54,8 +54,17 @@ class Journal
 
     std::error_condition Commit(tree_type& tree, std::size_t const batchSize)
     {
-        if (auto err = buffer_.Commit(values_, batchSize))
-            return err;
+        // This is where the rollback file creation should go!
+        // -->
+
+        // This should build an iovec and use writev instead
+        std::vector<std::uint8_t> writeBuffer;
+        writeBuffer.reserve(batchSize);
+        while (buffer_.Write(batchSize, writeBuffer))
+        {
+            if (auto err = values_->Append(writeBuffer))
+                return err;
+        }
         // write deepest nodes first so that no parent can refer
         // to a non-existent child
         for (auto it = deltas_.crbegin(), end = deltas_.crend(); it != end;

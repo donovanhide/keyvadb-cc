@@ -54,8 +54,11 @@ class DBTest<FileStoragePolicy<BITS>> : public DBTestBase<BITS>
     }
 };
 
-typedef ::testing::Types<MemoryStoragePolicy<256>, FileStoragePolicy<256>>
-    StorageTypes;
+// typedef ::testing::Types<MemoryStoragePolicy<256>, FileStoragePolicy<256>>
+//     StorageTypes;
+// TYPED_TEST_CASE(DBTest, StorageTypes);
+
+typedef ::testing::Types<FileStoragePolicy<256>> StorageTypes;
 TYPED_TEST_CASE(DBTest, StorageTypes);
 
 TYPED_TEST(DBTest, General)
