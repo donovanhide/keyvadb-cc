@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <map>
+#include <cassert>
 #include <system_error>
 #include "db/key.h"
 #include "db/node.h"
@@ -102,7 +103,7 @@ class Journal
     {
         delta_type delta(node);
         offset_ = delta.AddKeys(buffer_, offset_);
-        delta.CheckSanity();
+        assert(delta.CheckSanity());
         if (delta.Current()->EmptyKeyCount() == 0)
         {
             auto err = delta.Current()->EachChild(
@@ -130,7 +131,7 @@ class Journal
             if (err)
                 return err;
         }
-        delta.CheckSanity();
+        assert(delta.CheckSanity());
         if (delta.Dirty())
             deltas_.emplace(node->Level(), delta);
         return std::error_condition();
