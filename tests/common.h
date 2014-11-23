@@ -6,7 +6,6 @@
 #include "db/key.h"
 #include "db/node.h"
 #include "db/tree.h"
-#include "db/memory.h"
 #include "db/file.h"
 #include "db/buffer.h"
 #include "db/journal.h"
@@ -138,20 +137,6 @@ template <typename T>
 class StoreTest;
 
 template <std::uint32_t BITS>
-class StoreTest<MemoryStoragePolicy<BITS>>
-    : public StoreTestBase<MemoryStoragePolicy<BITS>>
-{
-    using policy_type = MemoryStoragePolicy<BITS>;
-
-   protected:
-    void InitStores() override
-    {
-        this->keys_ = policy_type::CreateKeyStore(16);
-        this->values_ = policy_type::CreateValueStore();
-    }
-};
-
-template <std::uint32_t BITS>
 class StoreTest<FileStoragePolicy<BITS>>
     : public StoreTestBase<FileStoragePolicy<BITS>>
 {
@@ -165,6 +150,5 @@ class StoreTest<FileStoragePolicy<BITS>>
     }
 };
 
-typedef ::testing::Types<MemoryStoragePolicy<256>, FileStoragePolicy<256>>
-    StoreTypes;
+typedef ::testing::Types<FileStoragePolicy<256>> StoreTypes;
 TYPED_TEST_CASE(StoreTest, StoreTypes);

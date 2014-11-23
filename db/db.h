@@ -8,7 +8,6 @@
 #include <condition_variable>
 #include <thread>
 #include <system_error>
-#include "db/memory.h"
 #include "db/file.h"
 #include "db/buffer.h"
 #include "db/tree.h"
@@ -50,21 +49,6 @@ class DB
     std::thread thread_;
 
    public:
-    explicit DB(std::uint32_t const degree)
-        : log_(Log{}),
-          keys_(Storage::CreateKeyStore(degree)),
-          values_(Storage::CreateValueStore()),
-          cache_(),
-          tree_(keys_, cache_),
-          buffer_hits_(0),
-          key_misses_(0),
-          value_hits_(0),
-          value_misses_(0),
-          close_(false),
-          thread_(&DB::flushThread, this)
-    {
-    }
-
     DB(std::string const &valueFileName, std::string const &keyFileName,
        std::uint32_t const blockSize, std::uint64_t const cacheSize)
         : log_(Log{}),

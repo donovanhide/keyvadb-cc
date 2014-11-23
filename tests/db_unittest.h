@@ -34,16 +34,6 @@ class DBTest : DBTestBase<StoragePolicy::BITS>
 };
 
 template <std::uint32_t BITS>
-class DBTest<MemoryStoragePolicy<BITS>> : public DBTestBase<BITS>
-{
-   public:
-    std::unique_ptr<DB<MemoryStoragePolicy<BITS>>> GetDB()
-    {
-        return std::make_unique<DB<MemoryStoragePolicy<BITS>>>(16);
-    }
-};
-
-template <std::uint32_t BITS>
 class DBTest<FileStoragePolicy<BITS>> : public DBTestBase<BITS>
 {
    public:
@@ -53,10 +43,6 @@ class DBTest<FileStoragePolicy<BITS>> : public DBTestBase<BITS>
             "test.keys", "test.values", 4096, 1024 * 1024 * 1024 / 4096);
     }
 };
-
-// typedef ::testing::Types<MemoryStoragePolicy<256>, FileStoragePolicy<256>>
-//     StorageTypes;
-// TYPED_TEST_CASE(DBTest, StorageTypes);
 
 typedef ::testing::Types<FileStoragePolicy<256>> StorageTypes;
 TYPED_TEST_CASE(DBTest, StorageTypes);

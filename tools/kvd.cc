@@ -32,10 +32,6 @@ int main()
 {
     DB<FileStoragePolicy<256>> db("kvd.keys", "kvd.values", 4096,
                                   1024 * 1024 * 1024 / 4096);
-    // DB<FileStoragePolicy<256>, StandardLog> db("kvd.keys", "kvd.values",
-    // 4096,
-    // 700);
-    // DB<MemoryStoragePolicy<256>> db(85);
     if (auto err = db.Open())
     {
         std::cerr << err.message() << std::endl;
