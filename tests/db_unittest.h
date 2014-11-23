@@ -7,11 +7,18 @@
 
 using namespace keyvadb;
 
-template <std::uint32_t BITS>
-class DBTestBase : public ::testing::Test
+template <typename StoragePolicy>
+class DBTest : public ::testing::Test
 {
    public:
-    using util = detail::KeyUtil<BITS>;
+    using util = detail::KeyUtil<StoragePolicy::Bits>;
+
+    std::unique_ptr<DB<FileStoragePolicy<StoragePolicy::Bits>>> GetDB()
+    {
+        return std::make_unique<DB<FileStoragePolicy<StoragePolicy::Bits>>>(
+            "test.keys", "test.values", 4096, 1024 * 1024 * 1024 / 4096);
+    }
+
     auto RandomKeys(std::size_t n, std::uint32_t seed)
     {
         std::vector<std::string> keys;
@@ -25,22 +32,6 @@ class DBTestBase : public ::testing::Test
         // ASSERT_EQ(a, b);
         ASSERT_EQ(util::ToHex(util::FromBytes(a)),
                   util::ToHex(util::FromBytes(b)));
-    }
-};
-
-template <typename StoragePolicy>
-class DBTest : DBTestBase<StoragePolicy::BITS>
-{
-};
-
-template <std::uint32_t BITS>
-class DBTest<FileStoragePolicy<BITS>> : public DBTestBase<BITS>
-{
-   public:
-    std::unique_ptr<DB<FileStoragePolicy<BITS>>> GetDB()
-    {
-        return std::make_unique<DB<FileStoragePolicy<BITS>>>(
-            "test.keys", "test.values", 4096, 1024 * 1024 * 1024 / 4096);
     }
 };
 
@@ -74,7 +65,7 @@ TYPED_TEST(DBTest, Bulk)
     std::uniform_int_distribution<size_t> value_length(32, 8000);
     std::mt19937 rng;
     rng.seed(0);
-    const std::size_t numKeys = 400000;
+    const std::size_t numKeys = 40000;
     auto keys = this->RandomKeys(numKeys, 0);
     auto f = [&](std::size_t const first, std::size_t const last)
     {
@@ -121,7 +112,6 @@ TYPED_TEST(DBTest, Bulk)
     //                         ASSERT_TRUE(unique.find(key) != unique.end());
     //                         i++;
     //                     });
-    // std::cout << err.message() << std::endl;
     // ASSERT_FALSE(err);
     // ASSERT_EQ(numKeys, i);
 }

@@ -75,5 +75,5 @@ TYPED_TEST(StoreTest, Cache)
 
     this->cache_.Add(firstChild);
     this->cache_.Add(firstChild);
-    std::cout << this->cache_;
+    // std::cout << this->cache_;
 }
