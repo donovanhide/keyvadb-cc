@@ -8,7 +8,7 @@
 #include <condition_variable>
 #include <thread>
 #include <system_error>
-#include "db/file.h"
+#include "db/store.h"
 #include "db/buffer.h"
 #include "db/tree.h"
 #include "db/journal.h"

@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <mutex>
 #include "db/key.h"
+#include "db/node.h"
 
 namespace keyvadb
 {

@@ -1,7 +1,7 @@
 #include <string>
 #include <tuple>
 #include "tests/common.h"
-#include "db/file.h"
+#include "db/store.h"
 
 using namespace keyvadb;
 

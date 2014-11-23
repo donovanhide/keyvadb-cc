@@ -6,7 +6,7 @@
 #include "db/key.h"
 #include "db/node.h"
 #include "db/tree.h"
-#include "db/file.h"
+#include "db/store.h"
 #include "db/buffer.h"
 #include "db/journal.h"
 
