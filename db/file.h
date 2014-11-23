@@ -17,7 +17,6 @@ class FileValueStore : public ValueStore<BITS>
 {
     using util = detail::KeyUtil<BITS>;
     using key_type = typename util::key_type;
-    using value_type = typename Buffer<BITS>::Value;
     using file_type = std::unique_ptr<RandomAccessFile>;
     using key_value_func =
         std::function<void(std::string const&, std::string const&)>;

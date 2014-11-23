@@ -54,14 +54,7 @@ class Delta
         return insertions_ - evictions_;
     }
 
-    void CheckSanity()
-    {
-        if (!current_->IsSane())
-        {
-            std::cout << *current_ << std::endl;
-            throw std::domain_error("Insane node");
-        }
-    }
+    bool CheckSanity() { return current_->IsSane(); }
 
     void SetChild(std::size_t const i, std::uint64_t const cid)
     {
