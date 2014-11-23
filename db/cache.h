@@ -128,17 +128,24 @@ class NodeCache
         return node_ptr();
     }
 
-    friend std::ostream& operator<<(std::ostream& stream, NodeCache& cache)
+    std::string ToString()
     {
-        std::lock_guard<std::mutex> lock(cache.lock_);
-        stream << "Size: " << cache.nodes_.size() << "/" << cache.maxSize_
-               << " Hits: " << cache.hits_ << " Misses: " << cache.misses_
-               << " Inserts:" << cache.inserts_
-               << " Updates: " << cache.updates_ << std::endl;
-        // for (auto const& n : cache.nodes_)
+        std::stringstream ss;
+        std::lock_guard<std::mutex> lock(lock_);
+        ss << "Size: " << nodes_.size() << "/" << maxSize_ << " Hits: " << hits_
+           << " Misses: " << misses_ << " Inserts:" << inserts_
+           << " Updates: " << updates_;
+        // stream << std::endl;
+        // for (auto const& n : nodes_)
         //     stream << n.left.first << ":" << util::ToHex(n.left.second) <<
         //     ":"
         //            << n.right->Id() << std::endl;
+        return ss.str();
+    }
+
+    friend std::ostream& operator<<(std::ostream& stream, NodeCache& cache)
+    {
+        stream << cache.ToString();
         return stream;
     }
 };

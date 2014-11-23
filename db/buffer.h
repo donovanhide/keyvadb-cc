@@ -7,6 +7,7 @@
 #include <boost/bimap/set_of.hpp>
 #include <boost/bimap/multiset_of.hpp>
 #include <boost/bimap/support/lambda.hpp>
+#include <cassert>
 #include <limits>
 #include <string>
 #include <map>
@@ -134,11 +135,10 @@ class Buffer
         std::lock_guard<std::mutex> lock(mtx_);
         auto it = buf_.left.find(key);
         assert(it != buf_.left.end());
-        auto modified = buf_.left.modify_data(
-            it, boost::bimaps::_data =
-                    Value{offset, it->second.length, it->second.value,
-                          ValueState::NeedsCommitting});
-        assert(modified);
+        auto v = Value{offset, it->second.length, it->second.value,
+                       ValueState::NeedsCommitting};
+        if (!buf_.left.modify_data(it, boost::bimaps::_data = v))
+            throw std::runtime_error("Bad SetOffset");
     }
 
     bool Write(std::size_t const batchSize, std::vector<std::uint8_t> &wb)
@@ -161,11 +161,10 @@ class Buffer
             std::memcpy(&wb[pos], it->first.value.data(),
                         it->first.value.size());
             pos += it->first.value.size();
-            auto modified = buf_.right.modify_key(
-                it, boost::bimaps::_key =
-                        Value{it->first.offset, it->first.length,
-                              it->first.value, ValueState::Committed});
-            assert(modified);
+            auto v = Value{it->first.offset, it->first.length, it->first.value,
+                           ValueState::Committed};
+            if (!buf_.right.modify_key(it, boost::bimaps::_key = v))
+                throw std::runtime_error("Bad Buffer Write");
             it = first(ValueState::NeedsCommitting);
         } while (it != buf_.right.end() &&
                  it->first.status == ValueState::NeedsCommitting &&
@@ -177,8 +176,9 @@ class Buffer
     {
         std::lock_guard<std::mutex> lock(mtx_);
         auto check = first(ValueState::NeedsCommitting);
-        assert(check == buf_.right.end() ||
-               check->first.status != ValueState::NeedsCommitting);
+        if (check != buf_.right.end() &&
+            check->first.status == ValueState::NeedsCommitting)
+            throw std::runtime_error("Bad Buffer Purge");
         buf_.right.erase(first(ValueState::Evicted), buf_.right.end());
     }
 
@@ -189,6 +189,7 @@ class Buffer
         std::for_each(lower(firstKey), upper(lastKey),
                       [&candidates, &evictions](left_value_type const &kv)
                       {
+
             if (kv.second.status == ValueState::Unprocessed)
                 candidates.emplace(KeyValue<BITS>{kv.first, kv.second.offset,
                                                   kv.second.length});
@@ -235,12 +236,6 @@ class Buffer
     {
         stream << "Buffer" << std::endl;
         std::lock_guard<std::mutex> lock(buffer.mtx_);
-        // for (auto const &kv : buffer.buf_)
-        //     stream << util::ToHex(kv.left) << ":" << kv.right.offset << ":"
-        //            << valueStates.at(kv.right.status) << ":" <<
-        //            kv.right.Size()
-        //            << std::endl;
-        // stream << "--------" << std::endl;
         for (auto const &v : buffer.buf_.right)
             stream << util::ToHex(v.second) << ":" << v.first.offset << ":"
                    << v.first.length << ":" << valueStates.at(v.first.status)

@@ -142,7 +142,10 @@ class DB
             return db_error::value_too_long;
         if (value.size() == 0)
             return db_error::zero_length_value;
-        buffer_.Add(key, value);
+        if (buffer_.Add(key, value) > 10000)
+            // naive rate limiter to stop the buffer growing too fast
+            // Consider: http://en.wikipedia.org/wiki/Token_bucket
+            std::this_thread::sleep_for(std::chrono::microseconds(1));
         return std::error_condition();
     }
 
@@ -161,8 +164,8 @@ class DB
                       << " nodes Buffer hits: " << buffer_hits_
                       << " Key misses: " << key_misses_
                       << " Value Hits: " << value_hits_
-                      << " Value Misses: " << value_misses_;
-        std::cout << cache_;
+                      << " Value Misses: " << value_misses_ << " Cache "
+                      << cache_.ToString();
         if (auto err =
                 journal.Commit(tree_, 1024 * 1024))  // TODO: Make a tunable
             return err;
