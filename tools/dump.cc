@@ -26,4 +26,5 @@ int main(int argc, char* argv[])
                   << ":" << hex(std::string(value.begin(), value.end()))
                   << std::endl;
     }
+    return 0;
 }
