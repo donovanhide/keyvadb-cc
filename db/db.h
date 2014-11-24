@@ -28,6 +28,9 @@ struct Options
     // Approximate maximum size of each write in the flush process.
     std::uint64_t writeBufferSize = 1024 * 1024;
 
+    // Time between each flush to disk in milliseconds
+    std::uint32_t flushInterval = 1000;
+
     // Path and name of the file to store the key index.
     std::string keyFileName = "db.keys";
 
@@ -193,7 +196,8 @@ class DB
     {
         for (;;)
         {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            std::this_thread::sleep_for(
+                std::chrono::milliseconds(options_.flushInterval));
             bool stop = close_;
             if (auto err = flush())
                 if (log_.error)
