@@ -16,8 +16,10 @@ using namespace std::chrono;
 // http://llvm.org/bugs/show_bug.cgi?id=21192
 int main()
 {
-    DB<256, StandardLog> db("kvd.keys", "kvd.values", 4096,
-                            1024 * 1024 * 1024 / 4096);
+    Options options;
+    options.keyFileName = "kvd.keys";
+    options.valueFileName = "kvd.values";
+    DB<256, StandardLog> db(options);
     if (auto err = db.Open())
     {
         std::cerr << err.message() << std::endl;

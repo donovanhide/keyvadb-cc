@@ -16,6 +16,25 @@
 
 namespace keyvadb
 {
+struct Options
+{
+    // Size of a node on disk, which determines the degree of the node.
+    std::uint32_t blockSize = 4096;
+
+    // Number of nodes to cache in memory.
+    // Default is 1GB of memory for default blockSize.
+    std::uint64_t cacheSize = 1024 * 1024 * 1024 / 4096;
+
+    // Approximate maximum size of each write in the flush process.
+    std::uint64_t writeBufferSize = 1024 * 1024;
+
+    // Path and name of the file to store the key index.
+    std::string keyFileName = "db.keys";
+
+    // Path and name of the file to store the keys and values.
+    std::string valueFileName = "db.values";
+};
+
 template <std::uint32_t BITS, class Log = NullLog>
 class DB
 {
@@ -35,6 +54,7 @@ class DB
         key_length = BITS / 8
     };
 
+    const Options options_;
     Log log_;
     key_store_ptr keys_;
     value_store_ptr values_;
@@ -49,11 +69,11 @@ class DB
     std::thread thread_;
 
    public:
-    DB(std::string const &valueFileName, std::string const &keyFileName,
-       std::uint32_t const blockSize, std::uint64_t const cacheSize)
-        : log_(Log{}),
-          keys_(CreateKeyStore<BITS>(valueFileName, blockSize)),
-          values_(CreateValueStore<BITS>(keyFileName)),
+    DB(Options const &options)
+        : options_(options),
+          log_(Log{}),
+          keys_(CreateKeyStore<BITS>(options.keyFileName, options.blockSize)),
+          values_(CreateValueStore<BITS>(options.valueFileName)),
           cache_(),
           tree_(*keys_, cache_),
           buffer_hits_(0),
@@ -63,7 +83,7 @@ class DB
           close_(false),
           thread_(&DB::flushThread, this)
     {
-        cache_.SetMaxSize(cacheSize);
+        cache_.SetMaxSize(options.cacheSize);
     }
     DB(DB const &) = delete;
     DB &operator=(DB const &) = delete;
@@ -166,10 +186,7 @@ class DB
                       << " Value Hits: " << value_hits_
                       << " Value Misses: " << value_misses_ << " Cache "
                       << cache_.ToString();
-        if (auto err =
-                journal.Commit(tree_, 1024 * 1024))  // TODO: Make a tunable
-            return err;
-        return std::error_condition();
+        return journal.Commit(tree_, options_.writeBufferSize);
     }
 
     void flushThread()

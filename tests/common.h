@@ -162,8 +162,10 @@ class DBTest : public ::testing::Test
 
     std::unique_ptr<DB<TestPolicy::Bits>> GetDB()
     {
-        return std::make_unique<DB<TestPolicy::Bits>>(
-            "db.test.keys", "db.test.values", 4096, 1024 * 1024 * 1024 / 4096);
+        Options options;
+        options.keyFileName = "db.test.keys";
+        options.valueFileName = "db.test.values";
+        return std::make_unique<DB<TestPolicy::Bits>>(options);
     }
 
     auto RandomKeys(std::size_t n, std::uint32_t seed)
