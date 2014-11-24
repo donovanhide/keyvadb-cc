@@ -17,26 +17,27 @@ class NodeCache
 {
     using util = detail::KeyUtil<BITS>;
     using key_type = typename util::key_type;
-    using node_type = Node<BITS>;
-    using node_ptr = std::shared_ptr<node_type>;
-    using key_level_pair = std::pair<std::uint32_t, key_type>;
-    struct compare_kl
+
+    struct CacheKey
     {
-        bool operator()(key_level_pair const& lhs,
-                        key_level_pair const& rhs) const
+        std::uint32_t level;
+        key_type key;
+
+        friend bool operator<(CacheKey const& lhs, CacheKey const& rhs)
         {
-            if (lhs.first == rhs.first)
-                return lhs.second < rhs.second;
-            return lhs.first > rhs.first;
+            if (lhs.level == rhs.level)
+                return lhs.key < rhs.key;
+            return lhs.level > rhs.level;
         }
     };
-    using store_type =
-        boost::bimaps::bimap<boost::bimaps::set_of<key_level_pair, compare_kl>,
-                             boost::bimaps::list_of<node_ptr>>;
-    using store_value = typename store_type::value_type;
-    using index_type = std::unordered_map<std::uint64_t, key_level_pair>;
 
-   private:
+    using node_type = Node<BITS>;
+    using node_ptr = std::shared_ptr<node_type>;
+    using store_type = boost::bimaps::bimap<boost::bimaps::set_of<CacheKey>,
+                                            boost::bimaps::list_of<node_ptr>>;
+    using store_value = typename store_type::value_type;
+    using index_type = std::unordered_map<std::uint64_t, CacheKey>;
+
     std::uint64_t maxSize_ = 0;
     std::uint64_t hits_ = 0;
     std::uint64_t misses_ = 0;
@@ -69,7 +70,7 @@ class NodeCache
         if (maxSize_ == 0)
             return;
         std::lock_guard<std::mutex> lock(lock_);
-        auto keyPair = key_level_pair{node->Level(), node->First()};
+        auto keyPair = CacheKey{node->Level(), node->First()};
         auto it = nodes_.left.find(keyPair);
         if (it != nodes_.left.end())
         {
@@ -109,10 +110,10 @@ class NodeCache
         std::lock_guard<std::mutex> lock(lock_);
         if (maxSize_ == 0 || nodes_.size() == 0)
             return node_ptr();
-        auto level = nodes_.left.begin()->first.first + 1;
+        auto level = nodes_.left.begin()->first.level + 1;
         for (; level > 0; level--)
         {
-            auto it = nodes_.left.upper_bound(key_level_pair{level, key});
+            auto it = nodes_.left.upper_bound(CacheKey{level, key});
             if (it != nodes_.left.begin())
                 it--;
             if (it->second->Level() > level)

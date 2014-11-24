@@ -49,11 +49,8 @@ class Buffer
         {
             return status == ValueState::NeedsCommitting;
         }
-    };
 
-    struct ValueComparer
-    {
-        bool operator()(Value const &lhs, Value const &rhs) const
+        friend bool operator<(Value const &lhs, Value const &rhs)
         {
             if (lhs.status == rhs.status && lhs.offset == rhs.offset)
                 return lhs.value < rhs.value;
@@ -67,9 +64,8 @@ class Buffer
     using util = detail::KeyUtil<BITS>;
     using key_type = typename util::key_type;
     using value_type = boost::optional<std::string>;
-    using map_type =
-        boost::bimap<boost::bimaps::set_of<key_type>,
-                     boost::bimaps::multiset_of<Value, ValueComparer>>;
+    using map_type = boost::bimap<boost::bimaps::set_of<key_type>,
+                                  boost::bimaps::multiset_of<Value>>;
     using left_value_type = typename map_type::left_value_type;
     using candidate_type = std::set<KeyValue<BITS>>;
 
