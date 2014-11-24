@@ -19,9 +19,6 @@
 
 namespace keyvadb
 {
-template <std::uint32_t BITS>
-class ValueStore;  // Forward Declaration
-
 // A threadsafe container for storing keys and values for the period before they
 // are committed to disk.
 template <std::uint32_t BITS>
@@ -74,7 +71,6 @@ class Buffer
         boost::bimap<boost::bimaps::set_of<key_type>,
                      boost::bimaps::multiset_of<Value, ValueComparer>>;
     using left_value_type = typename map_type::left_value_type;
-    using value_store_ptr = std::shared_ptr<ValueStore<BITS>>;
     using candidate_type = std::set<KeyValue<BITS>>;
 
     static const std::string emptyBufferValue;

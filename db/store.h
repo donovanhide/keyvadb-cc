@@ -4,8 +4,8 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
-#include "db/store.h"
-#include "db/cache.h"
+#include "db/key.h"
+#include "db/node.h"
 #include "db/env.h"
 #include "db/encoding.h"
 #include "db/error.h"

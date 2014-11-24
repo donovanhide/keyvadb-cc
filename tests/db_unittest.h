@@ -17,6 +17,7 @@ TYPED_TEST(DBTest, General)
 
     auto db = this->GetDB();
     ASSERT_FALSE(db->Open());
+    ASSERT_FALSE(db->Clear());
     ASSERT_EQ(db_error::key_wrong_length, db->Put(tooLong, value));
     ASSERT_EQ(db_error::key_wrong_length, db->Get(tooLong, &value));
     ASSERT_EQ(db_error::key_wrong_length, db->Put(tooShort, value));
@@ -30,10 +31,11 @@ TYPED_TEST(DBTest, Bulk)
 {
     auto db = this->GetDB();
     ASSERT_FALSE(db->Open());
+    ASSERT_FALSE(db->Clear());
     std::uniform_int_distribution<size_t> value_length(32, 8000);
     std::mt19937 rng;
     rng.seed(0);
-    const std::size_t numKeys = 40000;
+    const std::size_t numKeys = 100000;
     auto keys = this->RandomKeys(numKeys, 0);
     auto f = [&](std::size_t const first, std::size_t const last)
     {
@@ -68,18 +70,13 @@ TYPED_TEST(DBTest, Bulk)
         ASSERT_TRUE(NoError(db->Get(key, &value)));
         this->CompareKeys(key, value.substr(0, 32));
     }
-    // Close and reopen to make sure everything is flushed
-    // auto dbptr = db.release();
-    // delete dbptr;
-    // db = this->GetDB();
-    // ASSERT_FALSE(db->Open());
-    // std::uint32_t i = 0;
-    // auto err = db->Each([&](std::string const& key, std::string const& value)
-    //                     {
-    //                         this->CompareKeys(key, value.substr(0, 32));
-    //                         ASSERT_TRUE(unique.find(key) != unique.end());
-    //                         i++;
-    //                     });
-    // ASSERT_FALSE(err);
-    // ASSERT_EQ(numKeys, i);
+    std::uint32_t i = 0;
+    auto err = db->Each([&](std::string const& key, std::string const& value)
+                        {
+                            this->CompareKeys(key, value.substr(0, 32));
+                            ASSERT_TRUE(unique.find(key) != unique.end());
+                            i++;
+                        });
+    ASSERT_FALSE(err);
+    ASSERT_EQ(numKeys, i);
 }
