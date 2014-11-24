@@ -22,7 +22,7 @@ class Tree
     using util = detail::KeyUtil<BITS>;
     using key_type = typename util::key_type;
     using key_value_type = KeyValue<BITS>;
-    using key_store_ptr = std::shared_ptr<KeyStore<BITS>>;
+    using key_store_type = KeyStore<BITS>;
     using node_ptr = std::shared_ptr<Node<BITS>>;
     using node_func =
         std::function<std::error_condition(node_ptr, std::uint32_t)>;
@@ -30,11 +30,11 @@ class Tree
 
    private:
     static const uint64_t rootId = 0;
-    key_store_ptr store_;
+    key_store_type& store_;
     cache_type& cache_;
 
    public:
-    Tree(key_store_ptr const& store, cache_type& cache)
+    Tree(key_store_type& store, cache_type& cache)
         : store_(store), cache_(cache)
     {
     }
@@ -44,15 +44,15 @@ class Tree
     {
         node_ptr root;
         std::error_condition err;
-        std::tie(root, err) = store_->Get(rootId);
+        std::tie(root, err) = store_.Get(rootId);
         if (!err)
             return err;
-        root = store_->New(0, firstRootKey(), lastRootKey());
+        root = store_.New(0, firstRootKey(), lastRootKey());
         if (addSynthetics)
             root->AddSyntheticKeyValues();
         cache_.Reset();
         cache_.Add(root);
-        return store_->Set(root);
+        return store_.Set(root);
     }
 
     std::error_condition Walk(node_func f) const { return walk(rootId, 0, f); }
@@ -67,7 +67,7 @@ class Tree
         auto node = cache_.GetById(id);
         if (node)
             return std::make_pair(node, std::error_condition());
-        return store_->Get(id);
+        return store_.Get(id);
     }
 
     std::pair<key_value_type, std::error_condition> Get(
@@ -77,7 +77,7 @@ class Tree
         if (!node)
         {
             std::error_condition err;
-            std::tie(node, err) = store_->Get(rootId);
+            std::tie(node, err) = store_.Get(rootId);
             if (err)
                 throw std::runtime_error("no root!");
             // return std::make_pair(key_value_type{}, err);
@@ -87,7 +87,7 @@ class Tree
 
     std::error_condition Update(const node_ptr& node)
     {
-        if (auto err = store_->Set(node))
+        if (auto err = store_.Set(node))
             return err;
         cache_.Add(node);
         return std::error_condition();
@@ -153,7 +153,7 @@ class Tree
                     found = true;
                     node_ptr node;
                     std::error_condition err;
-                    std::tie(node, err) = store_->Get(cid);
+                    std::tie(node, err) = store_.Get(cid);
                     if (err)
                     {
                         return err;
@@ -174,7 +174,7 @@ class Tree
     {
         node_ptr node;
         std::error_condition err;
-        std::tie(node, err) = store_->Get(id);
+        std::tie(node, err) = store_.Get(id);
         if (err)
             return err;
         if (auto err = f(node, level))

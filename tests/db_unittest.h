@@ -3,40 +3,8 @@
 #include <set>
 #include <random>
 #include "tests/common.h"
-#include "db/db.h"
 
 using namespace keyvadb;
-
-template <typename StoragePolicy>
-class DBTest : public ::testing::Test
-{
-   public:
-    using util = detail::KeyUtil<StoragePolicy::Bits>;
-
-    std::unique_ptr<DB<FileStoragePolicy<StoragePolicy::Bits>>> GetDB()
-    {
-        return std::make_unique<DB<FileStoragePolicy<StoragePolicy::Bits>>>(
-            "test.keys", "test.values", 4096, 1024 * 1024 * 1024 / 4096);
-    }
-
-    auto RandomKeys(std::size_t n, std::uint32_t seed)
-    {
-        std::vector<std::string> keys;
-        for (auto const& key : util::RandomKeys(n, seed))
-            keys.emplace_back(util::ToBytes(key));
-        return keys;
-    }
-
-    void CompareKeys(std::string const& a, std::string const& b)
-    {
-        // ASSERT_EQ(a, b);
-        ASSERT_EQ(util::ToHex(util::FromBytes(a)),
-                  util::ToHex(util::FromBytes(b)));
-    }
-};
-
-typedef ::testing::Types<FileStoragePolicy<256>> StorageTypes;
-TYPED_TEST_CASE(DBTest, StorageTypes);
 
 TYPED_TEST(DBTest, General)
 {

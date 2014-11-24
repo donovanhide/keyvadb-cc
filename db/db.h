@@ -16,23 +16,23 @@
 
 namespace keyvadb
 {
-template <class Storage, class Log = NullLog>
+template <std::uint32_t BITS, class Log = NullLog>
 class DB
 {
-    using util = detail::KeyUtil<Storage::Bits>;
-    using key_store_ptr = typename Storage::KeyStorage;
-    using value_store_ptr = typename Storage::ValueStorage;
-    using key_value_type = KeyValue<Storage::Bits>;
-    using buffer_type = Buffer<Storage::Bits>;
-    using journal_type = Journal<Storage>;
-    using tree_type = Tree<Storage::Bits>;
-    using cache_type = NodeCache<Storage::Bits>;
+    using util = detail::KeyUtil<BITS>;
+    using key_store_ptr = std::unique_ptr<KeyStore<BITS>>;
+    using value_store_ptr = std::unique_ptr<ValueStore<BITS>>;
+    using key_value_type = KeyValue<BITS>;
+    using buffer_type = Buffer<BITS>;
+    using journal_type = Journal<BITS>;
+    using tree_type = Tree<BITS>;
+    using cache_type = NodeCache<BITS>;
     using key_value_func =
         std::function<void(std::string const &, std::string const &)>;
 
     enum
     {
-        key_length = Storage::Bits / 8
+        key_length = BITS / 8
     };
 
     Log log_;
@@ -52,10 +52,10 @@ class DB
     DB(std::string const &valueFileName, std::string const &keyFileName,
        std::uint32_t const blockSize, std::uint64_t const cacheSize)
         : log_(Log{}),
-          keys_(Storage::CreateKeyStore(valueFileName, blockSize)),
-          values_(Storage::CreateValueStore(keyFileName)),
+          keys_(CreateKeyStore<BITS>(valueFileName, blockSize)),
+          values_(CreateValueStore<BITS>(keyFileName)),
           cache_(),
-          tree_(keys_, cache_),
+          tree_(*keys_, cache_),
           buffer_hits_(0),
           key_misses_(0),
           value_hits_(0),
@@ -155,7 +155,7 @@ class DB
    private:
     std::error_condition flush()
     {
-        journal_type journal(buffer_, keys_, values_);
+        journal_type journal(buffer_, *keys_, *values_);
         if (auto err = journal.Process(tree_))
             return err;
         if (log_.info)

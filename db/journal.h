@@ -16,35 +16,35 @@ namespace keyvadb
 {
 // Journal is the where all changes to the keys and values occur
 // and the rollback file is created.
-template <class Storage>
+template <std::uint32_t BITS>
 class Journal
 {
-    using util = detail::KeyUtil<Storage::Bits>;
+    using util = detail::KeyUtil<BITS>;
     using key_type = typename util::key_type;
-    using key_store_ptr = typename Storage::KeyStorage;
-    using value_store_ptr = typename Storage::ValueStorage;
-    using key_value_type = KeyValue<Storage::Bits>;
-    using delta_type = Delta<Storage::Bits>;
-    using node_ptr = std::shared_ptr<Node<Storage::Bits>>;
-    using tree_type = Tree<Storage::Bits>;
-    using buffer_type = Buffer<Storage::Bits>;
+    using key_store_type = KeyStore<BITS>;
+    using value_store_type = ValueStore<BITS>;
+    using key_value_type = KeyValue<BITS>;
+    using delta_type = Delta<BITS>;
+    using node_ptr = std::shared_ptr<Node<BITS>>;
+    using tree_type = Tree<BITS>;
+    using buffer_type = Buffer<BITS>;
 
    private:
     buffer_type& buffer_;
-    key_store_ptr keys_;
-    value_store_ptr values_;
+    key_store_type& keys_;
+    value_store_type& values_;
     std::multimap<std::uint32_t, delta_type> deltas_;
     std::uint64_t offset_;
 
    public:
-    Journal(buffer_type& buffer, key_store_ptr& keys, value_store_ptr& values)
+    Journal(buffer_type& buffer, key_store_type& keys, value_store_type& values)
         : buffer_(buffer), keys_(keys), values_(values)
     {
     }
 
     std::error_condition Process(tree_type& tree)
     {
-        offset_ = values_->Size();
+        offset_ = values_.Size();
         std::error_condition err;
         node_ptr root;
         std::tie(root, err) = tree.Root();
@@ -63,7 +63,7 @@ class Journal
         writeBuffer.reserve(batchSize);
         while (buffer_.Write(batchSize, writeBuffer))
         {
-            if (auto err = values_->Append(writeBuffer))
+            if (auto err = values_.Append(writeBuffer))
                 return err;
         }
         // write deepest nodes first so that no parent can refer
@@ -114,7 +114,7 @@ class Journal
                         return std::error_condition();
                     if (cid == EmptyChild)
                     {
-                        auto child = keys_->New(node->Level() + 1, first, last);
+                        auto child = keys_.New(node->Level() + 1, first, last);
                         delta.SetChild(i, child->Id());
                         return process(tree, child);
                     }

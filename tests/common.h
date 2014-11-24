@@ -9,6 +9,7 @@
 #include "db/store.h"
 #include "db/buffer.h"
 #include "db/journal.h"
+#include "db/db.h"
 
 using namespace keyvadb;
 
@@ -19,32 +20,48 @@ using namespace keyvadb;
     return ::testing::AssertionSuccess();
 }
 
-template <typename T>
-class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits>
+// Simple wrapper around BITS
+template <std::uint32_t BITS>
+struct TestPolicy
+{
+    enum
+    {
+        Bits = BITS
+    };
+};
+
+template <typename TestPolicy>
+class StoreTest : public ::testing::Test,
+                  public detail::KeyUtil<TestPolicy::Bits>
 {
    protected:
-    using node_ptr = std::shared_ptr<Node<T::Bits>>;
-    using value_type = typename Buffer<T::Bits>::Value;
-    using status_type = typename Buffer<T::Bits>::ValueState;
-    using key_value_type = KeyValue<T::Bits>;
-    using tree_type = Tree<T::Bits>;
+    using key_store_ptr = std::unique_ptr<KeyStore<TestPolicy::Bits>>;
+    using value_store_ptr = std::unique_ptr<ValueStore<TestPolicy::Bits>>;
+    using node_ptr = std::shared_ptr<Node<TestPolicy::Bits>>;
+    using value_type = typename Buffer<TestPolicy::Bits>::Value;
+    using status_type = typename Buffer<TestPolicy::Bits>::ValueState;
+    using key_value_type = KeyValue<TestPolicy::Bits>;
+    using tree_type = Tree<TestPolicy::Bits>;
     using tree_ptr = std::unique_ptr<tree_type>;
-    using cache_type = NodeCache<T::Bits>;
-    using journal_type = Journal<T>;
+    using cache_type = NodeCache<TestPolicy::Bits>;
+    using journal_type = Journal<TestPolicy::Bits>;
     using journal_ptr = std::unique_ptr<journal_type>;
-    using buffer_type = Buffer<T::Bits>;
+    using buffer_type = Buffer<TestPolicy::Bits>;
     using random_type = std::vector<std::pair<std::string, std::string>>;
 
-    typename T::KeyStorage keys_;
-    typename T::ValueStorage values_;
+    key_store_ptr keys_;
+    value_store_ptr values_;
     cache_type cache_;
     buffer_type buffer_;
 
-    virtual void InitStores() {}
+    StoreTest()
+        : keys_(CreateKeyStore<TestPolicy::Bits>("test.keys", 4096)),
+          values_(CreateValueStore<TestPolicy::Bits>("test.values"))
+    {
+    }
 
     virtual void SetUp()
     {
-        InitStores();
         ASSERT_FALSE(keys_->Open());
         ASSERT_FALSE(keys_->Clear());
         ASSERT_FALSE(values_->Open());
@@ -63,22 +80,25 @@ class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits>
 
     value_type GetValue(std::uint64_t const offset, std::string const& value)
     {
-        return value_type{
-            offset,
-            std::uint32_t(value.size() + sizeof(std::uint32_t) + T::Bits / 8),
-            value, status_type::NeedsCommitting};
+        return value_type{offset,
+                          std::uint32_t(value.size() + sizeof(std::uint32_t) +
+                                        TestPolicy::Bits / 8),
+                          value, status_type::NeedsCommitting};
     }
 
     key_value_type EmptyKeyValue() { return key_value_type(); }
 
     // Fills a binary key with garbage hex
-    std::string HexString(char const c) { return std::string(T::Bits / 8, c); }
+    std::string HexString(char const c)
+    {
+        return std::string(TestPolicy::Bits / 8, c);
+    }
 
-    tree_ptr GetTree() { return std::make_unique<tree_type>(keys_, cache_); }
+    tree_ptr GetTree() { return std::make_unique<tree_type>(*keys_, cache_); }
 
     journal_ptr GetJournal()
     {
-        return std::make_unique<journal_type>(buffer_, keys_, values_);
+        return std::make_unique<journal_type>(buffer_, *keys_, *values_);
     }
 
     random_type RandomKeyValues(std::size_t const n, std::uint32_t const seed)
@@ -133,22 +153,36 @@ class StoreTestBase : public ::testing::Test, public detail::KeyUtil<T::Bits>
     }
 };
 
-template <typename T>
-class StoreTest;
-
-template <std::uint32_t BITS>
-class StoreTest<FileStoragePolicy<BITS>>
-    : public StoreTestBase<FileStoragePolicy<BITS>>
+template <typename TestPolicy>
+class DBTest : public ::testing::Test
 {
-    using policy_type = FileStoragePolicy<BITS>;
+   public:
+    using util = detail::KeyUtil<TestPolicy::Bits>;
 
-   protected:
-    void InitStores() override
+    std::unique_ptr<DB<TestPolicy::Bits>> GetDB()
     {
-        this->keys_ = policy_type::CreateKeyStore("test.keys", 4096);
-        this->values_ = policy_type::CreateValueStore("test.values");
+        return std::make_unique<DB<TestPolicy::Bits>>(
+            "db.test.keys", "db.test.values", 4096, 1024 * 1024 * 1024 / 4096);
+    }
+
+    auto RandomKeys(std::size_t n, std::uint32_t seed)
+    {
+        std::vector<std::string> keys;
+        for (auto const& key : util::RandomKeys(n, seed))
+            keys.emplace_back(util::ToBytes(key));
+        return keys;
+    }
+
+    void CompareKeys(std::string const& a, std::string const& b)
+    {
+        // ASSERT_EQ(a, b);
+        ASSERT_EQ(util::ToHex(util::FromBytes(a)),
+                  util::ToHex(util::FromBytes(b)));
     }
 };
 
-typedef ::testing::Types<FileStoragePolicy<256>> StoreTypes;
+typedef ::testing::Types<TestPolicy<256>> DBTypes;
+TYPED_TEST_CASE(DBTest, DBTypes);
+
+typedef ::testing::Types<TestPolicy<256>> StoreTypes;
 TYPED_TEST_CASE(StoreTest, StoreTypes);
