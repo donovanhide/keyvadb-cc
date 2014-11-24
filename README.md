@@ -1,9 +1,17 @@
 #KeyvaDB
 
 
+##TODO
+* Make a Key class that inherits from boost::multiprecision::number and make all utility functions static on that class.
+* Reduce coupling between all classes. Need to know basis!
+* Simplify delta::addKeys(). Lots of debugging baggage still present.
+* Implement rollback file.
+* Explore shared_timed_mutex for locking Buffer.
+* Reduce contention on Buffer lock.
+
 ##Values File
 ```
-uint64_t Length of length + key length + value length
+uint32_t Length of length + key length + value length
 key_type Key
 string   Value
 ... repeats
@@ -54,17 +62,16 @@ Compressed node #1
 
 ##Commit Process
 
-* Database has two buffers, active and commit.
-* All puts are written to active under a lock.
-* All gets check both active and commit under a lock before trying the key index tree.
-* Flush thread swaps active and commit buffers under a lock.
-* Flush thread now can access commit buffer for reads without a lock, no other thread will write to it.
-* For each item in commit buffer:
+* Database has one buffer for keys and values not yet committed to disk.
+* All puts are written to buffer under a lock.
+* All gets check buffer under a lock before trying the key index tree.
+* Flush thread is triggered a second after it last completed.
+* For each item in buffer:
 	* If item does not already exist:
  		* Assign value file offset.
  		* Store changed and original nodes in memory.
 * Create journal file.
-* Write all keys and values to values file at assigned offsets (writev or pwrite).
+* Append all keys and values to values file at assigned offsets (writev or write).
 * Write changed nodes to keys file.
 * Delete journal.
 
