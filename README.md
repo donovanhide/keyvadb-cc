@@ -8,6 +8,8 @@
 * Implement rollback file.
 * Explore shared_timed_mutex for locking Buffer.
 * Reduce contention on Buffer lock.
+* Explore reducing NodeCache memory usage using "Compressed node format".
+* Explore token bucket rate limiting of write to Buffer to prevent size explosion during benchmarking.
 
 ##Values File
 ```
