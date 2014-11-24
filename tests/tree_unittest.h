@@ -1,68 +1,39 @@
 #include "tests/common.h"
-#include "db/memory.h"
 #include "db/tree.h"
 
 using namespace keyvadb;
 
-void checkTree(Tree<256> const& tree) {
-  bool sane;
-  std::error_condition err;
-  std::tie(sane, err) = tree.IsSane();
-  ASSERT_FALSE(err);
-  ASSERT_TRUE(sane);
-}
-
-void checkCount(Tree<256> const& tree, std::size_t const expected) {
-  std::size_t count;
-  std::error_condition err;
-  std::tie(count, err) = tree.NonSyntheticKeyCount();
-  ASSERT_FALSE(err);
-  ASSERT_EQ(expected, count);
-}
-
-void checkValue(Tree<256> const& tree, KeyValue<256> const kv) {
-  std::uint64_t value;
-  std::error_condition err;
-  std::tie(value, err) = tree.Get(kv.key);
-  ASSERT_FALSE(err);
-  ASSERT_EQ(kv.value, value);
-}
-
-TYPED_TEST(StoreTest, TreeOperations) {
-  auto tree = this->GetTree();
-  ASSERT_FALSE(tree.Init(false));
-  // Check root has been created
-  checkTree(tree);
-  ASSERT_NE(0UL, this->keys_->Size());
-  // Insert some random values
-  // twice with same seed to insert duplicates
-  const std::size_t n = 1000;
-  const std::size_t rounds = 4;
-  for (std::size_t i = 0; i < 2; i++) {
-    for (std::size_t j = 0; j < rounds; j++) {
-      Buffer<256> buffer;
-      // Use j as seed
-      buffer.FillRandom(n, j);
-      ASSERT_EQ(n, buffer.Size());
-      Tree<256>::journal_ptr journal;
-      std::error_condition err;
-      auto snapshot = buffer.GetSnapshot();
-      std::tie(journal, err) = tree.Add(snapshot);
-      ASSERT_FALSE(err);
-      checkTree(tree);
-      ASSERT_FALSE(journal->Commit(this->keys_));
-      checkTree(tree);
-      if (i == 0) {
-        ASSERT_GT(journal->Size(), 0UL);
-        ASSERT_EQ(n, journal->TotalInsertions());
-        checkCount(tree, n * (j + 1));
-      } else {
-        ASSERT_EQ(journal->Size(), 0UL);
-        ASSERT_EQ(0UL, journal->TotalInsertions());
-      }
-      for (auto const& kv : snapshot->keys) checkValue(tree, kv);
-      // std::cout << *journal << "----" << std::endl;
+TYPED_TEST(StoreTest, TreeOperations)
+{
+    auto tree = this->GetTree();
+    ASSERT_FALSE(tree->Init(false));
+    // Check root has been created
+    this->checkTree(tree);
+    ASSERT_NE(0UL, this->keys_->Size());
+    // Insert some random values
+    // twice with same seed to insert duplicates
+    const std::size_t n = 20;
+    const std::size_t rounds = 4;
+    for (std::size_t i = 0; i < 2; i++)
+    {
+        for (std::size_t j = 0; j < rounds; j++)
+        {
+            // Use j as seed
+            auto input = this->RandomKeyValues(n, j);
+            for (auto const& kv : input) this->buffer_.Add(kv.first, kv.second);
+            // std::cout << "Add" << this->buffer_;
+            ASSERT_EQ(n, this->buffer_.Size());
+            auto journal = this->GetJournal();
+            ASSERT_FALSE(journal->Process(*tree));
+            // std::cout << "Process" << this->buffer_;
+            this->checkTree(tree);
+            // std::cout << this->buffer_;
+            ASSERT_FALSE(journal->Commit(*tree, 5));
+            // std::cout << "Commit" << this->buffer_;
+            this->checkTree(tree);
+            this->CheckRandomKeyValues(tree, n, j);
+            // std::cout << *tree;
+        }
     }
-  }
-  // std::cout << tree;
+    // std::cout << this->cache_;
 }
