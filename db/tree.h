@@ -86,7 +86,6 @@ class Tree
             std::tie(node, err) = store_.Get(rootId);
             if (err)
                 throw std::runtime_error("no root!");
-            // return std::make_pair(key_value_type{}, err);
         }
         return get(node, key);
     }
