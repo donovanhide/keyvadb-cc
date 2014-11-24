@@ -98,7 +98,7 @@ class StoreTest : public ::testing::Test,
 
     journal_ptr GetJournal()
     {
-        return std::make_unique<journal_type>(buffer_, *keys_, *values_);
+        return std::make_unique<journal_type>(buffer_, *values_);
     }
 
     random_type RandomKeyValues(std::size_t const n, std::uint32_t const seed)

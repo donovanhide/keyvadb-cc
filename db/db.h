@@ -155,7 +155,7 @@ class DB
    private:
     std::error_condition flush()
     {
-        journal_type journal(buffer_, *keys_, *values_);
+        journal_type journal(buffer_, *values_);
         if (auto err = journal.Process(tree_))
             return err;
         if (log_.info)

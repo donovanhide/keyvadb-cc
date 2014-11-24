@@ -70,6 +70,12 @@ class Tree
         return store_.Get(id);
     }
 
+    node_ptr CreateNode(std::uint32_t const level, key_type const& first,
+                        key_type const& last)
+    {
+        return store_.New(level, first, last);
+    }
+
     std::pair<key_value_type, std::error_condition> Get(
         key_type const& key) const
     {

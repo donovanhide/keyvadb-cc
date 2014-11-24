@@ -21,7 +21,6 @@ class Journal
 {
     using util = detail::KeyUtil<BITS>;
     using key_type = typename util::key_type;
-    using key_store_type = KeyStore<BITS>;
     using value_store_type = ValueStore<BITS>;
     using key_value_type = KeyValue<BITS>;
     using delta_type = Delta<BITS>;
@@ -31,14 +30,13 @@ class Journal
 
    private:
     buffer_type& buffer_;
-    key_store_type& keys_;
     value_store_type& values_;
     std::multimap<std::uint32_t, delta_type> deltas_;
     std::uint64_t offset_;
 
    public:
-    Journal(buffer_type& buffer, key_store_type& keys, value_store_type& values)
-        : buffer_(buffer), keys_(keys), values_(values)
+    Journal(buffer_type& buffer, value_store_type& values)
+        : buffer_(buffer), values_(values)
     {
     }
 
@@ -114,7 +112,8 @@ class Journal
                         return std::error_condition();
                     if (cid == EmptyChild)
                     {
-                        auto child = keys_.New(node->Level() + 1, first, last);
+                        auto child =
+                            tree.CreateNode(node->Level() + 1, first, last);
                         delta.SetChild(i, child->Id());
                         return process(tree, child);
                     }
