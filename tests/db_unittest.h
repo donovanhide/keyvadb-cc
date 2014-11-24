@@ -70,6 +70,11 @@ TYPED_TEST(DBTest, Bulk)
         ASSERT_TRUE(NoError(db->Get(key, &value)));
         this->CompareKeys(key, value.substr(0, 32));
     }
+    // Force flush to disk
+    auto dbptr = db.release();
+    delete dbptr;
+    db = this->GetDB();
+    ASSERT_FALSE(db->Open());
     std::uint32_t i = 0;
     auto err = db->Each([&](std::string const& key, std::string const& value)
                         {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <boost/algorithm/hex.hpp>
 #include "gtest/gtest.h"
 
 #include "db/key.h"
@@ -175,9 +176,8 @@ class DBTest : public ::testing::Test
 
     void CompareKeys(std::string const& a, std::string const& b)
     {
-        // ASSERT_EQ(a, b);
-        ASSERT_EQ(util::ToHex(util::FromBytes(a)),
-                  util::ToHex(util::FromBytes(b)));
+        ASSERT_EQ(a, b) << boost::algorithm::hex(a)
+                        << " != " << boost::algorithm::hex(b);
     }
 };
 
