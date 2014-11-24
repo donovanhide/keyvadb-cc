@@ -10,6 +10,8 @@
 * Reduce contention on Buffer lock.
 * Explore reducing NodeCache memory usage using "Compressed node format".
 * Explore token bucket rate limiting of write to Buffer to prevent size explosion during benchmarking.
+* Add a default file logger to db.log for all output.
+* Gather all statistics into single struct.
 
 ##Values File
 ```
